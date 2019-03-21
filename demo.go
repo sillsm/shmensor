@@ -15,7 +15,7 @@ package main
 
 import (
 	"fmt"
-	shmeh "shmensor/lib"
+	shmeh "shmensor/shmensor"
 )
 
 func main() {
