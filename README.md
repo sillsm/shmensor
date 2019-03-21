@@ -1,5 +1,5 @@
 # shmensor
-Ultra-lightweight tensor library in Go. For demonstration and education.
+Tiny tensor library in Go. For demonstration and education.
 
 I've been struggling with tensors for years, and writing this small program has helped me solidify my understanding. I hope playing with it can do the same for you.
 
