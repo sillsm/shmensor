@@ -15,6 +15,8 @@ TODO:
 
 References:
 
-Here's a great beginner resource for abstract index notation: https://en.wikipedia.org/wiki/Abstract_index_notation
-Contravariance and covariance: https://en.wikipedia.org/wiki/Covariance_and_contravariance_of_vectors
-Pavel Grinfeld's lectures on Youtube are essential viewing: https://www.youtube.com/watch?v=e0eJXttPRZI
+* Here's a great beginner resource for abstract index notation: https://en.wikipedia.org/wiki/Abstract_index_notation
+
+* Contravariance and covariance: https://en.wikipedia.org/wiki/Covariance_and_contravariance_of_vectors
+
+* Pavel Grinfeld's lectures on Youtube are essential viewing: https://www.youtube.com/watch?v=e0eJXttPRZI
