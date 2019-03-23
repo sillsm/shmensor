@@ -1,15 +1,5 @@
-/*
-Copyright 2019 Google LLC
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    https://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+//go 1.10.4
+
 package shmensor
 
 import (
@@ -106,43 +96,66 @@ func Eval(t ...Expression) Tensor {
 	if len(t) == 0 {
 		return Tensor{}
 	}
+
+	// First you tensor product together all the terms.
 	// TODO(Max): Eventually sequences of products could use dynamic programming.
 	head, tail := *t[0].t, t[1:]
 	for _, elt := range tail {
 		head = Product(head, *elt.t)
 	}
-	// Now your left with a single big product tensor head.
-	// Next, figure out repeated indices on head and keep contracting until you can't.
-	// Make sure to fail if any of the conditions don't hold:
-	// 1. Any letter only allowed to be repeated twice. ijjk ok, ijjj not ok.
-	// 2. Repeated indices must have opposite orientation (up or down)
-	trueSignature := ""
-	signature := ""
-	indices := ""
+
+	var signature []string
+	var indices []string
+
+	// Then find all the repeated indices and collect them in toContract.
 	for _, elt := range t {
-		trueSignature += elt.t.signature
-		signature += elt.signature
-		indices += elt.indices
+		s := strings.Split(elt.t.signature, "")
+		signature = append(signature, s...)
+		i := strings.Split(elt.indices, "")
+		indices = append(indices, i...)
+	}
+	sortedIndices := make([]string, len(indices))
+	copy(sortedIndices, indices)
+	sort.Strings(sortedIndices)
+
+	var toContract []string
+	var last string
+	for i, elt := range sortedIndices {
+		if elt == last {
+			if i < len(sortedIndices)-1 {
+				if sortedIndices[i+1] == elt {
+					log.Fatalf("too many repeated indices %v", indices)
+				}
+			}
+			toContract = append(toContract, elt)
+		}
+		last = elt
 	}
 
-	sortedIndices := strings.Split(indices, "")
-	sort.Strings(sortedIndices)
-	//signatures := strings.Split(signature, "")
+	// Now contract the repeated indices.
+	for _, index := range toContract {
+		a := -1
+		b := -1
+		for j, letter := range indices {
+			if letter == index {
+				if b == -1 && a != -1 {
+					b = j
+					break
+				}
+				if a == -1 {
+					a = j
+				}
+			}
+		}
 
-	seen := make(map[string]int)
-	seen = seen
+		head = Trace(head, a, b)
+		// Now delete a and b from indices and signature
+		indices = append(indices[:b], indices[b+1:]...)
+		signature = append(signature[:b], signature[b+1:]...)
+		indices = append(indices[:a], indices[a+1:]...)
+		signature = append(signature[:a], signature[a+1:]...)
 
-	fmt.Printf("True Signature: %v\n", trueSignature)
-	fmt.Printf("Desired Signature: %v\n", signature)
-	fmt.Printf("Indices: %v\n", indices)
-
-	/*
-		strings.Split(s, "")
-		fmt.Printf("%v\n", x)
-		sort.Strings(x)
-		fmt.Printf("%v\n", x)
-	*/
-
+	}
 	return head
 }
 
