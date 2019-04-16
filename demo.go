@@ -90,7 +90,7 @@ var eps = shmeh.NewTensor(
 		if reflect.DeepEqual(i, []int{0, 2, 1}) {
 			return -1
 		}
-		return 0
+		return 2
 	},
 	"ddd",
 	[]int{3, 3, 3})
