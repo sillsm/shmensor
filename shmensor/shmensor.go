@@ -19,19 +19,38 @@ import (
 	"strings"
 )
 
+// Type defines a ring element. To implement the interface
+// define multiplication and addition of the ring elements.
+//
+// Several default Tensor types and initializer functions
+// are defined at the end of the file.
+//
+// Note that most applications expect the inputs and output
+// to be of the same type. You have to enforce that at
+// object construction.
+type Type interface {
+	// Take two things, like numbers, get a new thing.
+	Multiply(interface{}, interface{}) interface{}
+	// Take two things, like numbers, get a new thing.
+	Add(interface{}, interface{}) interface{}
+}
+
 // A Tensor is not a matrix. It's a tensor.
 // A Tensor is a multi-dimensional array that
 // transforms according to the co and contravariant.
 // tensor transformation laws.
 type Tensor struct {
 	//coordinate function
-	f func(i ...int) int
+	f func(i ...int) interface{}
 	// signature like "uddduu"
 	// combo of contra and co indices
 	signature string
 	// dimension of indices.
 	// len(dim)==len(signature)
 	dim []int
+	// Type of Tensor elt. Like real number, complex number
+	// rational number.
+	t Type
 }
 
 // An Expression is not a Tensor. It's an Expression symbolizing a
@@ -42,14 +61,6 @@ type Expression struct {
 	t         *Tensor
 	indices   string
 	signature string
-}
-
-func NewTensor(f func(i ...int) int, signature string, dim []int) Tensor {
-	return Tensor{
-		f,
-		signature,
-		dim,
-	}
 }
 
 // Pretty printing.
@@ -183,8 +194,8 @@ func Trace(t Tensor, a, b int) Tensor {
 		log.Fatalf("trace error incompatible dims")
 	}
 
-	g := func(i ...int) int { //takes in dim 2 less
-		sum := 0
+	g := func(i ...int) interface{} { //takes in dim 2 less
+		var sum interface{}
 		// Shift args for the 2 repeated indices.
 		inner := make([]int, len(i))
 		copy(inner, i)
@@ -194,7 +205,11 @@ func Trace(t Tensor, a, b int) Tensor {
 
 		for k := 0; k < t.dim[a]; k++ {
 			inner[a], inner[b] = k, k
-			sum += t.f(inner...)
+			if k == 0 {
+				sum = t.f(inner...)
+				continue
+			}
+			t.t.Add(sum, t.f(inner...))
 		}
 		return sum
 	}
@@ -216,15 +231,19 @@ func Trace(t Tensor, a, b int) Tensor {
 		g,
 		sig,
 		d,
+		t.t,
 	}
 }
 
 func Product(t1, t2 Tensor) Tensor {
-	f := func(inner ...int) int {
+	f := func(inner ...int) interface{} {
 		i := make([]int, len(inner))
 		copy(i, inner)
-		return t1.f(i[0:len(t1.dim)]...) *
-			t2.f(i[len(t1.dim):]...)
+		// Assert they are the same type here
+		// TODO(xam)
+
+		return t1.t.Multiply(t1.f(i[0:len(t1.dim)]...),
+			t2.f(i[len(t1.dim):]...))
 	}
 
 	t2dim := make([]int, len(t2.dim))
@@ -233,6 +252,7 @@ func Product(t1, t2 Tensor) Tensor {
 		f,
 		t1.signature + t2.signature,
 		append(t1.dim, t2dim...),
+		t1.t,
 	}
 }
 
@@ -268,7 +288,7 @@ func giveCoordinate(dim []int, i int) []int {
 // and 1 covariant index of dimension 4, Reify will produce a
 // 4 by (1*2*3)=6 matrix, with the indices sorted.
 // Do not treat this as a real matrix it's merely for convenience.
-func (t Tensor) reify() [][]int {
+func (t Tensor) reify() [][]interface{} {
 	coDim := 1
 	contraDim := 1
 	var co []int
@@ -284,9 +304,9 @@ func (t Tensor) reify() [][]int {
 		}
 	}
 	// Make kroeneker representation
-	twoD := make([][]int, contraDim)
+	twoD := make([][]interface{}, contraDim)
 	for i := 0; i < contraDim; i++ {
-		twoD[i] = make([]int, coDim)
+		twoD[i] = make([]interface{}, coDim)
 	}
 
 	for i := 0; i < contraDim; i++ {
@@ -310,4 +330,68 @@ func (t Tensor) reify() [][]int {
 		}
 	}
 	return twoD
+}
+
+// This section is used to define some package-default Tensor types.
+// Interface may become open in the future so clients can define their own.
+// For example, Tensor spaces over finite fields, or modules over arbitrary rings.
+
+// Integers.
+type defaultInt struct{}
+
+func (dt defaultInt) Multiply(x, y interface{}) interface{} {
+	return x.(int) * y.(int)
+}
+
+func (dt defaultInt) Add(x, y interface{}) interface{} {
+	return x.(int) + y.(int)
+}
+
+func NewIntTensor(f func(i ...int) int, signature string, dim []int) Tensor {
+	return Tensor{
+		func(i ...int) interface{} { return f(i...) },
+		signature,
+		dim,
+		defaultInt{},
+	}
+}
+
+// Reals.
+type defaultReal struct{}
+
+func (dt defaultReal) Multiply(x, y interface{}) interface{} {
+	return x.(float64) * y.(float64)
+}
+
+func (dt defaultReal) Add(x, y interface{}) interface{} {
+	return x.(float64) + y.(float64)
+}
+
+func NewRealTensor(f func(i ...int) float64, signature string, dim []int) Tensor {
+	return Tensor{
+		func(i ...int) interface{} { return f(i...) },
+		signature,
+		dim,
+		defaultReal{},
+	}
+}
+
+// Complex numbers.
+type defaultComplex struct{}
+
+func (dt defaultComplex) Multiply(x, y interface{}) interface{} {
+	return x.(complex128) * y.(complex128)
+}
+
+func (dt defaultComplex) Add(x, y interface{}) interface{} {
+	return x.(complex128) + y.(complex128)
+}
+
+func NewComplexTensor(f func(i ...int) complex128, signature string, dim []int) Tensor {
+	return Tensor{
+		func(i ...int) interface{} { return f(i...) },
+		signature,
+		dim,
+		defaultComplex{},
+	}
 }

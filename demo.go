@@ -60,7 +60,7 @@ func identity(i ...int) int {
 
 // New vector helper function.
 func newVec(i ...int) *shmeh.Tensor {
-	t := shmeh.NewTensor(
+	t := shmeh.NewIntTensor(
 		func(j ...int) int {
 			return i[j[0]]
 		},
@@ -70,7 +70,7 @@ func newVec(i ...int) *shmeh.Tensor {
 }
 
 // Levi-civita symbol on 3 letters.
-var eps = shmeh.NewTensor(
+var eps = shmeh.NewIntTensor(
 	func(i ...int) int {
 		if reflect.DeepEqual(i, []int{0, 1, 2}) {
 			return 1
@@ -95,43 +95,43 @@ var eps = shmeh.NewTensor(
 	"ddd",
 	[]int{3, 3, 3})
 
-var col1 = shmeh.NewTensor(
+var col1 = shmeh.NewIntTensor(
 	identity,
 	"u",
 	[]int{3},
 )
 
-var row1 = shmeh.NewTensor(
+var row1 = shmeh.NewIntTensor(
 	identity,
 	"d",
 	[]int{3},
 )
 
-var mat1 = shmeh.NewTensor(
+var mat1 = shmeh.NewIntTensor(
 	identity,
 	"ud",
 	[]int{3, 3},
 )
 
-var bivec1 = shmeh.NewTensor(
+var bivec1 = shmeh.NewIntTensor(
 	identity,
 	"uu",
 	[]int{3, 3},
 )
 
-var bilinearform1 = shmeh.NewTensor(
+var bilinearform1 = shmeh.NewIntTensor(
 	identity,
 	"dd",
 	[]int{3, 3},
 )
 
-var onetwo1 = shmeh.NewTensor(
+var onetwo1 = shmeh.NewIntTensor(
 	identity,
 	"udd",
 	[]int{3, 3, 3},
 )
 
-var s1 = shmeh.NewTensor(
+var s1 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		return 5
 	},
@@ -139,7 +139,7 @@ var s1 = shmeh.NewTensor(
 	[]int{},
 )
 
-var x1 = shmeh.NewTensor(
+var x1 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := [][]int{
 			{1, 2},
@@ -150,7 +150,7 @@ var x1 = shmeh.NewTensor(
 	[]int{2, 2},
 )
 
-var x2 = shmeh.NewTensor(
+var x2 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := [][]int{
 			{0, 5},
@@ -161,7 +161,7 @@ var x2 = shmeh.NewTensor(
 	[]int{2, 2},
 )
 
-var det1 = shmeh.NewTensor(
+var det1 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		if i[0] == i[1] {
 			return i[0] + 1
