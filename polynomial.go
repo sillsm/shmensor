@@ -25,7 +25,7 @@ func main() {
 }
 
 // 3x^2 + 5x + 10
-var P1 = shmeh.NewTensor(
+var P1 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := []int{3, 5, 10}
 		return z[i[0]]
@@ -35,7 +35,7 @@ var P1 = shmeh.NewTensor(
 )
 
 // x^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2
-var P2 = shmeh.NewTensor(
+var P2 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := [][]int{
 			//y^2 y  c
@@ -49,7 +49,7 @@ var P2 = shmeh.NewTensor(
 )
 
 // 3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy
-var P3 = shmeh.NewTensor(
+var P3 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := [][][]int{
 
@@ -76,7 +76,7 @@ var P3 = shmeh.NewTensor(
 )
 
 // Derivative on 2nd degree polynomials.
-var D3 = shmeh.NewTensor(
+var D3 = shmeh.NewIntTensor(
 	func(i ...int) int {
 		z := [][]int{
 			{0, 0, 0},
