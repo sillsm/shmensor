@@ -209,7 +209,7 @@ func Trace(t Tensor, a, b int) Tensor {
 				sum = t.f(inner...)
 				continue
 			}
-			t.t.Add(sum, t.f(inner...))
+			sum = t.t.Add(sum, t.f(inner...))
 		}
 		return sum
 	}
