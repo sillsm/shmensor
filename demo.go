@@ -40,6 +40,11 @@ func main() {
 			newVec(2, 3, 4).U("j"),
 			newVec(5, 6, 7).U("k")),
 			"Cross product of <2,3,4> and <5,6,7> in abstract index notation."},
+		//https://www.wolframalpha.com/input/?i=%7B%7B2+%2B+6.5i,+1+-7.001i%7D,+%7B0,+3+%2B+i%7D%7D+*+%7B%7Bi%7D,%7B6%7D%7D
+		{complex1, "Complex LHS"},
+		{complex2, "Complex RHS"},
+		{shmeh.Eval(complex1.U("i").D("j"), complex2.D("j")),
+			"Their product."},
 	}
 
 	for _, elt := range table {
@@ -170,4 +175,24 @@ var det1 = shmeh.NewIntTensor(
 	},
 	"ud",
 	[]int{3, 3},
+)
+
+var complex1 = shmeh.NewComplexTensor(
+	func(i ...int) complex128 {
+		z := [][]complex128{
+			{complex(2, 6.5), complex(1, -7.001)},
+			{complex(0, 0), complex(3, 1)}}
+		return z[i[0]][i[1]]
+	},
+	"ud",
+	[]int{2, 2},
+)
+
+var complex2 = shmeh.NewComplexTensor(
+	func(i ...int) complex128 {
+		z := []complex128{complex(0, 1), complex(6, 0)}
+		return z[i[0]]
+	},
+	"u",
+	[]int{2},
 )
