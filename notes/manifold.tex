@@ -1,0 +1,53 @@
+
+%\documentclass{article}
+\documentclass[18pt]{extarticle}
+% Comment the following line to NOT allow the usage of umlauts
+\usepackage[utf8]{inputenc}
+% Uncomment the following line to allow the usage of graphics (.png, .jpg)
+%\usepackage{graphicx}
+
+\newcommand*{\pd}[3][]{\ensuremath{\frac{\partial^{#1} #2}{\partial #3}}}
+% Start the document
+\begin{document}
+
+% Create a new 1st level heading
+\section{Finding a function's derivative in chart coordinates}
+Front matter
+$
+\\ f(x) = f(\psi^{-1}(\psi(x)))
+%
+\\ \frac{\partial}{\partial x} f(x) =
+\frac{\partial }{\partial x} 
+f(\psi^{-1}(\psi(x)))
+%
+\\ =\pd{f}{x}(\psi^{-1}(\psi(x))) *
+\pd{}{x}(\psi^{-1}(\psi(x))) 
+%
+\\ =\pd{f}{x}(\psi^{-1}(\psi(x))) *
+\pd{\psi^{-1}}{x}(\psi(x)) *
+\pd{}{x}\psi(x)
+\\ $
+\newline
+Now also consider the following:
+\newline
+$
+\\ \pd{}{x}f(\psi^{-1}(x)) =
+\pd{f}{x}(\psi^{-1}(x)) *
+\pd{\psi^{-1}}{x}(x)
+$
+\newline
+\newline
+This is the derivative of the function in the chart coordinates on the left hand side and then applying the chain rule on the right.
+\newline 
+But from the above equalities we see we can relate
+the derivative of the function in chart coordinates, to its derivative in manifold coordinates by (a) evaluating it at $\psi(x)$ and then (b) multiplying by $\pd{\psi}{x}$.
+\newline 
+\newline
+So we finally have:
+\newline
+$
+\\ \pd{}{x}f(x) = \pd{\psi}{x}[
+\pd{\psi^{-1}}{x}@\psi(x) * 
+\pd{}{x}f(\psi^{-1}(x)) @ \psi(x)]
+$
+\end{document}
