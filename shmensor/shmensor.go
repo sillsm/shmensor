@@ -112,10 +112,10 @@ func (e Expression) D(indices string) Expression {
 // is only performed when you call Reify().
 //
 // Consider verbose mode boolean to explore what's happening.
-func Eval(t ...Expression) Tensor {
+func Eval(t ...Expression) (Tensor, error) {
 	// Eval first tensors products
 	if len(t) == 0 {
-		return Tensor{}
+		return Tensor{}, nil
 	}
 
 	// First you tensor product together all the terms.
@@ -169,7 +169,11 @@ func Eval(t ...Expression) Tensor {
 			}
 		}
 
-		head = Trace(head, a, b)
+		var err error
+		head, err = Trace(head, a, b)
+		if err != nil {
+			return head, err
+		}
 		// Now delete a and b from indices and signature
 		indices = append(indices[:b], indices[b+1:]...)
 		signature = append(signature[:b], signature[b+1:]...)
@@ -177,7 +181,7 @@ func Eval(t ...Expression) Tensor {
 		signature = append(signature[:a], signature[a+1:]...)
 
 	}
-	return head
+	return head, nil
 }
 
 // Trace is a contraction on two indices.
@@ -185,7 +189,7 @@ func Eval(t ...Expression) Tensor {
 // from accessing directly
 // and/or verify indices exist to contract
 // and are same dimensions.
-func Trace(t Tensor, a, b int) Tensor {
+func Trace(t Tensor, a, b int) (Tensor, error) {
 	// assume a less than b
 	if b < a {
 		b, a = a, b
@@ -232,7 +236,7 @@ func Trace(t Tensor, a, b int) Tensor {
 		sig,
 		d,
 		t.t,
-	}
+	}, nil
 }
 
 func Product(t1, t2 Tensor) Tensor {

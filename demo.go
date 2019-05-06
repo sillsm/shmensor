@@ -18,38 +18,46 @@ import (
 	shmeh "shmensor/shmensor"
 )
 
+func E(e ...shmeh.Expression) []shmeh.Expression {
+	return e
+}
+
 func main() {
 	table := []struct {
-		t    shmeh.Tensor
+		t    []shmeh.Expression
 		desc string
 	}{
-		{col1, "Column Vector (1, 0)."},
-		{row1, "Row Vector (0, 1)."},
-		{mat1, "Matrix (1, 1)."},
-		{bivec1, "Bivector (2, 0.)"},
-		{shmeh.Eval(s1.U(""), x1.U("i").D("j"), x2.U("k").D("l")),
+		{E(col1.U("i")), "Column Vector (1, 0)."},
+		{E(row1.D("j")), "Row Vector (0, 1)."},
+		{E(mat1.U("i").D("j")), "Matrix (1, 1)."},
+		{E(bivec1.U("i").U("j")), "Bivector (2, 0.)"},
+		{E(s1.U(""), x1.U("i").D("j"), x2.U("k").D("l")),
 			"Evaluating a scalar times a tensor product of a row and column (2, 2)."},
 		// equals 36 until you divide by 6. To be supported later when extended to floats and bignum
-		{shmeh.Eval(eps.D("ijk"), eps.D("pqr"),
+		{E(eps.D("ijk"), eps.D("pqr"),
 			det1.U("p").D("i"),
 			det1.U("q").D("j"),
 			det1.U("r").D("k")),
 			"Determinant of <1,2><3,4> in abstract index notation."},
 		//https://www.mathsisfun.com/algebra/vectors-cross-product.html
-		{shmeh.Eval(eps.D("ijk"),
+		{E(eps.D("ijk"),
 			newVec(2, 3, 4).U("j"),
 			newVec(5, 6, 7).U("k")),
 			"Cross product of <2,3,4> and <5,6,7> in abstract index notation."},
 		//https://www.wolframalpha.com/input/?i=%7B%7B2+%2B+6.5i,+1+-7.001i%7D,+%7B0,+3+%2B+i%7D%7D+*+%7B%7Bi%7D,%7B6%7D%7D
-		{complex1, "Complex LHS"},
-		{complex2, "Complex RHS"},
-		{shmeh.Eval(complex1.U("i").D("j"), complex2.D("j")),
+		{E(complex1.U("i").D("j")), "Complex LHS"},
+		{E(complex2.D("j")), "Complex RHS"},
+		{E(complex1.U("i").D("j"), complex2.D("j")),
 			"Their product."},
 	}
 
 	for _, elt := range table {
+		tensor, err := shmeh.Eval(elt.t...)
+		if err != nil {
+			panic(err)
+		}
 		fmt.Printf("%v\n", elt.desc)
-		fmt.Printf("%v", elt.t)
+		fmt.Printf("%v", tensor)
 	}
 }
 

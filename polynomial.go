@@ -17,11 +17,29 @@ import (
 	shmeh "shmensor/shmensor"
 )
 
-func main() {
-	fmt.Printf("%v", shmeh.Eval(D3.D("ij"), P1.U("j")))
-	fmt.Printf("%v", shmeh.Eval(D3.U("i").D("k"), P2.U("m").D("k")))
-	fmt.Printf("%v", shmeh.Eval(D3.U("i").D("j"), P3.U("k").D("j").D("m")))
+func E(e ...shmeh.Expression) []shmeh.Expression {
+	return e
+}
 
+func main() {
+	table := []struct {
+		t    []shmeh.Expression
+		desc string
+	}{
+		{E(D3.U("i").D("j"), P1.U("j")), "Partial derivative of 3x^2 + 5x + 10."},
+		{E(D3.U("i").D("k"), P2.U("m").U("k")),
+			"Partial derivative w.r.t y of \nx^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2"},
+		{E(D3.U("i").D("j"), P3.U("k").D("j").D("m")),
+			"Partial w.r.t. y of \n3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy"},
+	}
+	for _, elt := range table {
+		tensor, err := shmeh.Eval(elt.t...)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%v\n", elt.desc)
+		fmt.Printf("%v", tensor)
+	}
 }
 
 // 3x^2 + 5x + 10
