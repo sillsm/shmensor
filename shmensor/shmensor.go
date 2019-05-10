@@ -66,9 +66,24 @@ type Expression struct {
 // Pretty printing.
 func (t Tensor) String() string {
 	ret := "\n"
-	fmt.Printf("%v\n", t.reify())
-	ret += fmt.Sprintf("%v signature \n\n", t.signature)
+	fmt.Printf("%v", t.Reify())
+	ret += fmt.Sprintf("Signature: \"%v\"\n\n", t.signature)
 	return ret
+}
+
+func (t Tensor) Signature() string {
+	return t.signature
+}
+
+func (t Tensor) Dimension() []int {
+	return t.dim
+}
+
+func (t *Tensor) Reshape(signature string) {
+	if len(signature) != len(t.signature) {
+		panic("Trying to perform invalid reshape.")
+	}
+	t.signature = signature
 }
 
 // Like t.U("ij").D("k").U("a").D("b")
@@ -292,7 +307,7 @@ func giveCoordinate(dim []int, i int) []int {
 // and 1 covariant index of dimension 4, Reify will produce a
 // 4 by (1*2*3)=6 matrix, with the indices sorted.
 // Do not treat this as a real matrix it's merely for convenience.
-func (t Tensor) reify() [][]interface{} {
+func (t Tensor) Reify() [][]interface{} {
 	coDim := 1
 	contraDim := 1
 	var co []int

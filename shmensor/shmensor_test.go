@@ -50,6 +50,19 @@ func newScalar(i int) Tensor {
 	return t
 }
 
+// New matrix helper function.
+func newMatrix(v [][]int) Tensor {
+	vals := make([][]int, len(v))
+	copy(vals, v)
+	return NewIntTensor(
+		func(i ...int) int {
+			return vals[i[0]][i[1]]
+		},
+		"ud",
+		[]int{len(v), len(v[0])},
+	)
+}
+
 // There are three types of trace errors that can happen.
 // a) One or both of the indices you want to contract don't exist.
 // b) The indices are of different dimension.
@@ -79,16 +92,16 @@ func TestTrace(t *testing.T) {
 			t.Errorf("Trace attempt should have errored but did not.")
 		}
 		// First check the actual numerical values are correct.
-		if !reflect.DeepEqual(r.reify(), tt.reified) {
-			t.Errorf("Reified tensor value error: want %v, got %v", tt.reified, r.reify())
+		if !reflect.DeepEqual(r.Reify(), tt.reified) {
+			t.Errorf("Reified tensor value error: want %v, got %v", tt.reified, r.Reify())
 		}
 		// Check signatures.
-		if !reflect.DeepEqual(r.signature, tt.signature) {
-			t.Errorf("Signature mismatch: want %v, got %v", tt.signature, r.signature)
+		if !reflect.DeepEqual(r.Signature(), tt.signature) {
+			t.Errorf("Signature mismatch: want %v, got %v", tt.signature, r.Signature())
 		}
 		// Check dimensions.
-		if !reflect.DeepEqual(r.dim, tt.dimension) {
-			t.Errorf("Dimension mismatch: want %v, got %v", tt.dimension, r.dim)
+		if !reflect.DeepEqual(r.Dimension(), tt.dimension) {
+			t.Errorf("Dimension mismatch: want %v, got %v", tt.dimension, r.Dimension())
 		}
 	}
 }

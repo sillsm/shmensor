@@ -17,29 +17,97 @@ import (
 	shmeh "shmensor/shmensor"
 )
 
+// Prettified
+// u
+// u
+// u d d d
+
+func detectNesting(signature string, dim []int, x, y int) (int, int) {
+	retX := 0
+	retY := 0
+	xi := 1
+	yi := 1
+	for in, ch := range signature {
+		switch string(ch) {
+		case "u":
+			yi *= dim[in]
+			if (y)%yi == 0 {
+				retY++
+			}
+		case "d":
+			xi *= dim[in]
+			if (x)%xi == 0 {
+				retX++
+			}
+		}
+	}
+	return retX, retY
+}
+
+func VisualizePolynomial(t shmeh.Tensor) {
+
+	grid := t.Reify()
+	for y, row := range grid {
+		_, lines := detectNesting(t.Signature(), t.Dimension(), 0, y)
+		for i := 0; i < lines; i++ {
+			fmt.Printf("\n")
+			for j := 0; j < len(row); j++ {
+				fmt.Printf("######\t")
+			}
+			fmt.Printf("\n")
+		}
+		for x := range row {
+			bars, _ := detectNesting(t.Signature(), t.Dimension(), x, 0)
+			for i := 0; i < bars; i++ {
+				fmt.Printf("|")
+			}
+
+			fmt.Printf("%v\t", grid[y][x])
+
+		}
+		fmt.Printf("\n")
+	}
+}
+
 func E(e ...shmeh.Expression) []shmeh.Expression {
 	return e
 }
 
 func main() {
+	VisualizePolynomial(P3)
+
 	table := []struct {
-		t    []shmeh.Expression
-		desc string
+		t []shmeh.Expression
+		// Reshape it to make it visually compelling.
+		// In reality, all these tensors should be all "uuuu", or the
+		// contraction with the "ud" partial derivative doesn't make sense.
+		reshape string
+		desc    string
 	}{
-		{E(D3.U("i").D("j"), P1.U("j")), "Partial derivative of 3x^2 + 5x + 10."},
+		{E(D3.U("i").D("j"), P1.U("j")),
+			"u",
+			"Partial derivative of 3x^2 + 5x + 10."},
 		{E(D3.U("i").D("k"), P2.U("m").U("k")),
+			"ud",
 			"Partial derivative w.r.t y of \nx^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2"},
-		{E(D3.U("i").D("j"), P3.U("k").D("j").D("m")),
+		{E(D3.U("i").D("j"), P3.U("l").U("j").U("m")),
+			"udd",
 			"Partial w.r.t. y of \n3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy"},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
+		tensor.Reshape(elt.reshape)
+
 		if err != nil {
 			panic(err)
 		}
 		fmt.Printf("%v\n", elt.desc)
-		fmt.Printf("%v", tensor)
+		//fmt.Printf("%v", tensor)
+
+		VisualizePolynomial(tensor)
+		fmt.Printf("\n\n\n")
 	}
+
 }
 
 // 3x^2 + 5x + 10
@@ -89,7 +157,7 @@ var P3 = shmeh.NewIntTensor(
 		}
 		return z[i[0]][i[1]][i[2]]
 	},
-	"udu",
+	"dud",
 	[]int{3, 3, 3},
 )
 
