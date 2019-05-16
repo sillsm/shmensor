@@ -44,9 +44,43 @@ func detectNesting(signature string, dim []int, x, y int) (int, int) {
 	return retX, retY
 }
 
-func VisualizePolynomial(t shmeh.Tensor) {
+// This function prints the nested covariant labels for a tensor.
+func printCovariantLabels(d []int) {
+	names := []string{"z", "y"}
+	dim := 1
+	for _, elt := range d {
+		dim *= elt
+	}
+	tally := dim
+	for vari, arity := range d {
+		tally /= arity
+		fmt.Println()
+		ch := -1
+		for i := 0; i < dim; i++ {
+			j := (i / tally) % arity
+			if j != ch && (i%tally) == tally/2 {
+				if len(d) > len(names) {
+					panic("Didn't plan more than 2 covariant indices.")
+				}
+				fmt.Printf("%v", names[len(names)-len(d):][vari])
+				fmt.Printf("%v\t", arity-j-1)
+				ch = j
+				continue
+			}
+			fmt.Printf("\t")
+		}
+	}
+}
 
+func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 	grid := t.Reify()
+	// Label the top
+	// the first multiple of 3 (the zs)
+	// then
+	// the second multuple of 3 (the ys)
+
+	printCovariantLabels(t.CovariantIndices())
+
 	for y, row := range grid {
 		_, lines := detectNesting(t.Signature(), t.Dimension(), 0, y)
 		for i := 0; i < lines; i++ {
@@ -74,7 +108,7 @@ func E(e ...shmeh.Expression) []shmeh.Expression {
 }
 
 func main() {
-	VisualizePolynomial(P3)
+	VisualizePolynomial(P3, nil, nil)
 
 	table := []struct {
 		t []shmeh.Expression
@@ -104,7 +138,7 @@ func main() {
 		fmt.Printf("%v\n", elt.desc)
 		//fmt.Printf("%v", tensor)
 
-		VisualizePolynomial(tensor)
+		VisualizePolynomial(tensor, nil, nil)
 		fmt.Printf("\n\n\n")
 	}
 

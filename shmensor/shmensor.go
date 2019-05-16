@@ -71,12 +71,33 @@ func (t Tensor) String() string {
 	return ret
 }
 
+// Some getters.
 func (t Tensor) Signature() string {
 	return t.signature
 }
 
 func (t Tensor) Dimension() []int {
 	return t.dim
+}
+
+func (t Tensor) ContravariantIndices() []int {
+	var ret []int
+	for i, ch := range t.signature {
+		if string(ch) == "u" {
+			ret = append(ret, t.dim[i])
+		}
+	}
+	return ret
+}
+
+func (t Tensor) CovariantIndices() []int {
+	var ret []int
+	for i, ch := range t.signature {
+		if string(ch) == "d" {
+			ret = append(ret, t.dim[i])
+		}
+	}
+	return ret
 }
 
 func (t *Tensor) Reshape(signature string) {
