@@ -108,28 +108,56 @@ func E(e ...shmeh.Expression) []shmeh.Expression {
 }
 
 func main() {
-	VisualizePolynomial(P3, nil, nil)
-
 	table := []struct {
 		t []shmeh.Expression
 		// Reshape it to make it visually compelling.
 		// In reality, all these tensors should be all "uuuu", or the
 		// contraction with the "ud" partial derivative doesn't make sense.
-		reshape string
-		desc    string
+		reshape        string
+		aTrans, bTrans int
+		desc           string
 	}{
 		{E(D3.U("i").D("j"), P1.U("j")),
 			"u",
+			0, 0,
 			"Partial derivative of 3x^2 + 5x + 10."},
+		{E(P2.U("m").U("k")),
+			"ud",
+			0, 0,
+			"Matrix representation of polynomial\nx^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2"},
+		{E(D3.U("i").D("m"), P2.U("m").U("k")),
+			"ud",
+			0, 0,
+			"Partial derivative w.r.t x"},
 		{E(D3.U("i").D("k"), P2.U("m").U("k")),
 			"ud",
-			"Partial derivative w.r.t y of \nx^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2"},
+			0, 1,
+			"Partial derivative w.r.t y"},
+		{E(P3.U("l").U("j").U("m")),
+			"dud",
+			0, 0,
+			"Matrix representation of polynomial\n3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy"},
+		{E(D3.U("i").D("l"), P3.U("l").U("j").U("m")),
+			"dud",
+			0, 0,
+			"Derivative w.r.t. z"},
 		{E(D3.U("i").D("j"), P3.U("l").U("j").U("m")),
 			"udd",
-			"Partial w.r.t. y of \n3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy"},
+			0, 0,
+			"Derivative w.r.t. x"},
+		{E(D3.U("i").D("z"), P3.U("l").U("j").U("z")),
+			"udd",
+			0, 2,
+			"Derivative w.r.t. y "},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
+		// Transpose?
+		if elt.aTrans != 0 || elt.bTrans != 0 {
+			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)
+
+		}
+
 		tensor.Reshape(elt.reshape)
 
 		if err != nil {
@@ -176,7 +204,7 @@ var P3 = shmeh.NewIntTensor(
 			//y^2 y  c
 			{ //z^2
 				{3, 0, 0},  // x^2
-				{0, 1, 0},  // x
+				{7, 1, 0},  // x
 				{0, 2, 0}}, // c
 			//y^2 y  c
 			{ // z
@@ -191,7 +219,7 @@ var P3 = shmeh.NewIntTensor(
 		}
 		return z[i[0]][i[1]][i[2]]
 	},
-	"dud",
+	"uuu",
 	[]int{3, 3, 3},
 )
 

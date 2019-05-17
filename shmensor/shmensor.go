@@ -220,6 +220,31 @@ func Eval(t ...Expression) (Tensor, error) {
 	return head, nil
 }
 
+// Transpose swaps two tensor indices.
+func Transpose(t Tensor, a, b int) (Tensor, error) {
+	// assume a less than b
+	if b < a {
+		b, a = a, b
+	}
+
+	if b > len(t.signature)-1 || a < 0 {
+		panic("Trying to transpose bad indices.")
+	}
+	g := func(i ...int) interface{} { //takes in dim 2 less
+		inner := make([]int, len(i))
+		copy(inner, i)
+		inner[a], inner[b] = inner[b], inner[a]
+		return t.f(inner...)
+	}
+
+	return Tensor{
+		g,
+		t.signature,
+		t.dim,
+		t.t,
+	}, nil
+}
+
 // Trace is a contraction on two indices.
 // eventually should forbid callers
 // from accessing directly
