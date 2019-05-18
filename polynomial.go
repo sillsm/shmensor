@@ -149,6 +149,31 @@ func main() {
 			"udd",
 			0, 2,
 			"Derivative w.r.t. y "},
+		//
+		// We finish with some Taylor shifts!
+		//
+		{E(DerivativeTower2.U("i").D("j").U("k")),
+			"dud",
+			0, 0,
+			"Tower of all nth derivatives of quadratic polynomials."},
+		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(2, 1, -1).U("k")),
+			"ud",
+			0, 0,
+			"Derivative tower contracted with a base quadratic polynomial (2x-1)(x+2) =2x^2 + x -1 "},
+		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(2, 1, -1).U("k"), newVec(4, -2, 1).U("j")),
+			"u",
+			0, 0,
+			"We can do arbitrary horizontal shifts by multiplying this matrix\n" +
+				"by a shift vector <-disp^0, -disp^1 ...>. Here we shift to the right by 2."},
+		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(3, -18, -21).U("k")),
+			"ud",
+			0, 0,
+			"Derivative tower contracted with a base quadratic polynomial (3x+3)(x-7) =3x^2-18x-21 "},
+		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(3, -18, -21).U("k"), newVec(25, 5, 1).U("j")),
+			"u",
+			0, 0,
+			"We can do arbitrary horizontal shifts by multiplying this matrix\n" +
+				"by a shift vector <-disp^0, -disp^1 ...>. Here we shift to the left by 5."},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
@@ -235,3 +260,37 @@ var D3 = shmeh.NewIntTensor(
 	"ud",
 	[]int{3, 3},
 )
+
+// 0th, first, and 2nd derivatvies on 2nd degree polynomials.
+var DerivativeTower2 = shmeh.NewIntTensor(
+	func(i ...int) int {
+		z := [][][]int{
+			{
+				{0, 0, 0},
+				{0, 0, 0},
+				{2 / 2, 0, 0}}, // 1/n!
+			{
+				{0, 0, 0},
+				{2, 0, 0},
+				{0, 1, 0}},
+			{
+				{1, 0, 0},
+				{0, 1, 0},
+				{0, 0, 1}},
+		}
+		return z[i[0]][i[1]][i[2]]
+	},
+	"dud",
+	[]int{3, 3, 3},
+)
+
+// New vector helper function.
+func newVec(i ...int) *shmeh.Tensor {
+	t := shmeh.NewIntTensor(
+		func(j ...int) int {
+			return i[j[0]]
+		},
+		"u",
+		[]int{len(i)})
+	return &t
+}
