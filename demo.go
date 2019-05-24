@@ -40,6 +40,11 @@ func main() {
 			det1.U("r").D("k")),
 			"Determinant of <1,2><3,4> in abstract index notation."},
 		//https://www.mathsisfun.com/algebra/vectors-cross-product.html
+		{E(dirac_delta3.U("a").D("b").D("c"),
+			newVec(1, 2, 3, 4, 5).U("b"),
+			newVec(1, 2, 3, 4, 5).U("c")),
+			"Hadamard Product (component wise multiplication) on <1,2,3,4,5>."},
+		//
 		{E(eps.D("ijk"),
 			newVec(2, 3, 4).U("j"),
 			newVec(5, 6, 7).U("k")),
@@ -124,6 +129,12 @@ var mat1 = shmeh.NewIntTensor(
 	identity,
 	"ud",
 	[]int{3, 3},
+)
+
+var dirac_delta3 = shmeh.NewIntTensor(
+	identity,
+	"udd",
+	[]int{5, 5, 5},
 )
 
 var bivec1 = shmeh.NewIntTensor(
