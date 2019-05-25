@@ -174,6 +174,16 @@ func main() {
 			0, 0,
 			"We can do arbitrary horizontal shifts by multiplying this matrix\n" +
 				"by a shift vector <-disp^0, -disp^1 ...>. Here we shift to the left by 5."},
+		// Finally some mucking about with progressive shift.
+		// Copy this over to demo.go, for eventual inclusion in DFT.go as part of convolution.
+		{E(ProgressiveShift3.D("i").U("j").D("k"), newVec(1, 2, 3).U("k")),
+			"ud",
+			0, 0,
+			"Progressive right shift on <1, 2, 3>"},
+		{E(dirac_delta3.U("a").D("b").D("c"), ProgressiveShift3.D("b").U("x").D("y"), elements.U("c").U("y")),
+			"ud",
+			0, 0,
+			"Progressive right shift on P2"},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
@@ -221,6 +231,19 @@ var P2 = shmeh.NewIntTensor(
 	[]int{3, 3},
 )
 
+var elements = shmeh.NewIntTensor(
+	func(i ...int) int {
+		z := [][]int{
+			//y^2 y  c
+			{1, 2, 3}, // x^2
+			{4, 5, 6}, // x
+			{7, 8, 9}} // c
+		return z[i[0]][i[1]]
+	},
+	"ud",
+	[]int{3, 3},
+)
+
 // 3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy
 var P3 = shmeh.NewIntTensor(
 	func(i ...int) int {
@@ -259,6 +282,46 @@ var D3 = shmeh.NewIntTensor(
 	},
 	"ud",
 	[]int{3, 3},
+)
+
+func identity(i ...int) int {
+	val := i[0]
+	for _, elt := range i {
+		if elt != val {
+			return 0
+		}
+	}
+	return 1
+}
+
+var dirac_delta3 = shmeh.NewIntTensor(
+	identity,
+	"udd",
+	[]int{3, 3, 3},
+)
+
+// Shift the 0th row 0 to the right, 1st row 1 to the right
+// Shift the nth row n to the right.
+var ProgressiveShift3 = shmeh.NewIntTensor(
+	func(i ...int) int {
+		z := [][][]int{
+			{
+				{1, 0, 0},
+				{0, 1, 0},
+				{0, 0, 1}}, // 1/n!
+			{
+				{0, 0, 0},
+				{1, 0, 0},
+				{0, 1, 0}},
+			{
+				{0, 0, 0},
+				{0, 0, 0},
+				{1, 0, 0}},
+		}
+		return z[i[0]][i[1]][i[2]]
+	},
+	"dud",
+	[]int{3, 3, 3},
 )
 
 // 0th, first, and 2nd derivatvies on 2nd degree polynomials.

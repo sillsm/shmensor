@@ -34,17 +34,17 @@ func main() {
 		{E(s1.U(""), x1.U("i").D("j"), x2.U("k").D("l")),
 			"Evaluating a scalar times a tensor product of a row and column (2, 2)."},
 		// equals 36 until you divide by 6. To be supported later when extended to floats and bignum
+		{E(dirac_delta3.U("a").D("b").D("c"),
+			newVec(1, 2, 3, 4, 5).U("b"),
+			newVec(1, 2, 3, 4, 5).U("c")),
+			"Hadamard Product (component wise multiplication) on <1,2,3,4,5>."},
+		//
 		{E(eps.D("ijk"), eps.D("pqr"),
 			det1.U("p").D("i"),
 			det1.U("q").D("j"),
 			det1.U("r").D("k")),
 			"Determinant of <1,2><3,4> in abstract index notation."},
 		//https://www.mathsisfun.com/algebra/vectors-cross-product.html
-		{E(dirac_delta3.U("a").D("b").D("c"),
-			newVec(1, 2, 3, 4, 5).U("b"),
-			newVec(1, 2, 3, 4, 5).U("c")),
-			"Hadamard Product (component wise multiplication) on <1,2,3,4,5>."},
-		//
 		{E(eps.D("ijk"),
 			newVec(2, 3, 4).U("j"),
 			newVec(5, 6, 7).U("k")),
