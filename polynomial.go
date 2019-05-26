@@ -180,10 +180,23 @@ func main() {
 			"ud",
 			0, 0,
 			"Progressive right shift on <1, 2, 3>"},
-		{E(dirac_delta3.U("a").D("b").D("c"), ProgressiveShift3.D("b").U("x").D("y"), elements.U("c").U("y")),
+		{E(dirac_delta3.U("a").U("b").D("c"), ProgressiveShift3.D("b").U("x").D("y"), elements.U("c").U("y")),
 			"ud",
 			0, 0,
 			"Progressive right shift on P2"},
+		{E(ProgressiveShift5.D("a").U("b").D("c")),
+			"dud",
+			0, 0,
+			"Progressive right shift on 5 elements."},
+		{E(newVec(5, 4, 3, 2, 1).U("a"), newVec(5, 6, 7, 8, 9).U("b")),
+			"ud",
+			0, 0,
+			"Tensor product of (5x^4 + 4x^3 + 3x^2 + 2x + 1) * (5x^4 + 6x^3 + 7x^2 + 8x + 9.)"},
+		{E(dirac_delta5.U("a").U("b").D("c"), ProgressiveShift5.D("b").U("x").D("y"),
+			newVec(5, 4, 3, 2, 1).U("c"), newVec(5, 6, 7, 8, 9).U("y")),
+			"ud",
+			0, 0,
+			"Progressive shift the product"},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
@@ -296,8 +309,14 @@ func identity(i ...int) int {
 
 var dirac_delta3 = shmeh.NewIntTensor(
 	identity,
-	"udd",
+	"uud",
 	[]int{3, 3, 3},
+)
+
+var dirac_delta5 = shmeh.NewIntTensor(
+	identity,
+	"uud",
+	[]int{5, 5, 5},
 )
 
 // Shift the 0th row 0 to the right, 1st row 1 to the right
@@ -322,6 +341,25 @@ var ProgressiveShift3 = shmeh.NewIntTensor(
 	},
 	"dud",
 	[]int{3, 3, 3},
+)
+
+// Arrayed on the first index
+func ProgressiveShift(i ...int) int {
+	if len(i) != 3 {
+		panic("Trying call progressive shift != 3 entries.")
+	}
+	x, y := i[1], i[2]
+	z := i[0]
+	if (y + z) == x {
+		return 1
+	}
+	return 0
+}
+
+var ProgressiveShift5 = shmeh.NewIntTensor(
+	ProgressiveShift,
+	"dud",
+	[]int{5, 5, 5},
 )
 
 // 0th, first, and 2nd derivatvies on 2nd degree polynomials.
