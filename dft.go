@@ -329,7 +329,7 @@ func Embed(inputDim, outputDim int) *shmeh.Tensor {
 
 // Does a DFT matrix.
 func DFT(n int) func(i ...int) complex128 {
-	increment := 2 * math.Pi / float64(n)
+	increment := -2 * math.Pi / float64(n)
 	var motherRow []complex128
 	for j := 0; j < n; j++ {
 		num := increment * float64(j)
