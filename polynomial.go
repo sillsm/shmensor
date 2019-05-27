@@ -196,7 +196,21 @@ func main() {
 			newVec(5, 4, 3, 2, 1).U("c"), newVec(5, 6, 7, 8, 9).U("y")),
 			"ud",
 			0, 0,
-			"Progressive shift the product"},
+			"Progressive shift the product."},
+		{E(
+			dirac_delta9.U("a").U("b").D("i"), ProgressiveShift9.D("b").U("x").D("l"),
+			Embed(5, 9).U("i").D("j"), newVec(5, 4, 3, 2, 1).U("j"), //new vector index is i
+			Embed(5, 9).U("l").D("z"), newVec(5, 6, 7, 8, 9).U("z")), //new vector index is l
+			"ud",
+			0, 0,
+			"Progressive shift the product after proper embedding."},
+		{E(newVec(1, 1, 1, 1, 1, 1, 1, 1, 1).U("a"), // All ones is a row-summing tensor.
+			dirac_delta9.U("a").U("b").D("i"), ProgressiveShift9.D("b").U("x").D("l"),
+			Embed(5, 9).U("i").D("j"), newVec(5, 4, 3, 2, 1).U("j"), //new vector index is i
+			Embed(5, 9).U("l").D("z"), newVec(5, 6, 7, 8, 9).U("z")), //new vector index is l
+			"u",
+			0, 0,
+			"Finally, convolution = embed the vectors, tensor product, shift it, sum rows."},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
@@ -319,6 +333,12 @@ var dirac_delta5 = shmeh.NewIntTensor(
 	[]int{5, 5, 5},
 )
 
+var dirac_delta9 = shmeh.NewIntTensor(
+	identity,
+	"uud",
+	[]int{9, 9, 9},
+)
+
 // Shift the 0th row 0 to the right, 1st row 1 to the right
 // Shift the nth row n to the right.
 var ProgressiveShift3 = shmeh.NewIntTensor(
@@ -361,6 +381,24 @@ var ProgressiveShift5 = shmeh.NewIntTensor(
 	"dud",
 	[]int{5, 5, 5},
 )
+
+var ProgressiveShift9 = shmeh.NewIntTensor(
+	ProgressiveShift,
+	"dud",
+	[]int{9, 9, 9},
+)
+
+// Embed returns a matrix which will
+// embed an input a vector in a different vector space.
+// When larger, it zero-pads all new dimensions.
+func Embed(inputDim, outputDim int) *shmeh.Tensor {
+	t := shmeh.NewIntTensor(
+		identity,
+		"ud",
+		[]int{outputDim, inputDim},
+	)
+	return &t
+}
 
 // 0th, first, and 2nd derivatvies on 2nd degree polynomials.
 var DerivativeTower2 = shmeh.NewIntTensor(
