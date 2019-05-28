@@ -15,6 +15,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/cmplx"
 	shmeh "shmensor/shmensor"
 )
 
@@ -97,7 +98,7 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 				fmt.Printf("|")
 			}
 
-			fmt.Printf("%v\t", grid[y][x])
+			fmt.Printf("%.5f\t", grid[y][x])
 
 		}
 		fmt.Printf("\n")
@@ -138,6 +139,20 @@ func main() {
 			"ud",
 			0, 0,
 			"8:"},
+		{E(newDFTTensor(5).U("i").D("j"), newIDFTTensor(5).U("j").D("k")),
+			"ud",
+			0, 0,
+			"Let's demonstrate the IDFT matrix and the DFT matrix are inverses."},
+		{E(
+			newIDFTTensor(9).U("z").D("h"),           // Finally, we invert.
+			newComplexDirac3(9).U("h").D("f").D("g"), // Hadamard product those babies.
+			newDFTTensor(9).U("f").D("a"),            // DFT the first two polynomials.
+			newDFTTensor(9).U("g").D("x"),
+			Embed(5, 9).U("a").D("b"), newVec(5, 4, 3, 2, 1).U("b"), //new vector index is a
+			Embed(5, 9).U("x").D("y"), newVec(5, 6, 7, 8, 9).U("y")), //new vector index is x
+			"u",
+			0, 0,
+			"Finally, we compute the product of the DFT of both polynomials, then invert."},
 	}
 	for _, elt := range table {
 		tensor, err := shmeh.Eval(elt.t...)
@@ -319,8 +334,11 @@ var ProgressiveShift9 = shmeh.NewIntTensor(
 // embed an input a vector in a different vector space.
 // When larger, it zero-pads all new dimensions.
 func Embed(inputDim, outputDim int) *shmeh.Tensor {
-	t := shmeh.NewIntTensor(
-		identity,
+	f := func(i ...int) complex128 {
+		return complex(float64(identity(i...)), 0)
+	}
+	t := shmeh.NewComplexTensor(
+		f,
 		"ud",
 		[]int{outputDim, inputDim},
 	)
@@ -353,6 +371,21 @@ func DFT(n int) func(i ...int) complex128 {
 	return f
 }
 
+func newComplexDirac3(size int) *shmeh.Tensor {
+	f := func(i ...int) complex128 {
+		if i[0] == i[1] && i[1] == i[2] {
+			return complex(1., 0.)
+		}
+		return complex(0., 0.)
+	}
+
+	t := shmeh.NewComplexTensor(
+		f,
+		"dud",
+		[]int{size, size, size})
+	return &t
+}
+
 func newDFTTensor(size int) *shmeh.Tensor {
 	t := shmeh.NewComplexTensor(
 		DFT(size),
@@ -362,11 +395,26 @@ func newDFTTensor(size int) *shmeh.Tensor {
 
 }
 
+// Inverse DFT is equal to the conjugate transpose of the DFT.
+// Because a DFT is a self-adjoint unitary matrix.
+// Or something?
+func newIDFTTensor(size int) *shmeh.Tensor {
+	dft := DFT(size)
+	f := func(i ...int) complex128 {
+		return cmplx.Conj(dft(i...)) / complex(float64(size), 0) // conjugate that DFT, then norm it by the size.
+	}
+	t := shmeh.NewComplexTensor(
+		f,
+		"ud",
+		[]int{size, size})
+	return &t
+}
+
 // New vector helper function.
 func newVec(i ...int) *shmeh.Tensor {
-	t := shmeh.NewIntTensor(
-		func(j ...int) int {
-			return i[j[0]]
+	t := shmeh.NewComplexTensor(
+		func(j ...int) complex128 {
+			return complex(float64(i[j[0]]), 0)
 		},
 		"u",
 		[]int{len(i)})
