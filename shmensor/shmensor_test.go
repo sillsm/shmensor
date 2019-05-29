@@ -17,15 +17,19 @@ import (
 	"testing"
 )
 
+/*
+We define a bunch of Tensor helper functions before the tests.
+*/
+
 // New vector helper function.
-func newVec(i ...int) Tensor {
+func newVec(i ...int) *Tensor {
 	t := NewIntTensor(
 		func(j ...int) int {
 			return i[j[0]]
 		},
 		"u",
 		[]int{len(i)})
-	return t
+	return &t
 }
 
 // New row helper function.
@@ -51,16 +55,70 @@ func newScalar(i int) Tensor {
 }
 
 // New matrix helper function.
-func newMatrix(v [][]int) Tensor {
+func newMatrix(v [][]int) *Tensor {
 	vals := make([][]int, len(v))
 	copy(vals, v)
-	return NewIntTensor(
+	t := NewIntTensor(
 		func(i ...int) int {
 			return vals[i[0]][i[1]]
 		},
 		"ud",
 		[]int{len(v), len(v[0])},
 	)
+	return &t
+}
+
+var det1 = NewIntTensor(
+	func(i ...int) int {
+		if i[0] == i[1] {
+			return i[0] + 1
+		}
+		return 0
+	},
+	"ud",
+	[]int{3, 3},
+)
+
+// Levi-civita symbol on 3 letters.
+var eps = NewIntTensor(
+	func(i ...int) int {
+		if reflect.DeepEqual(i, []int{0, 1, 2}) {
+			return 1
+		}
+		if reflect.DeepEqual(i, []int{1, 2, 0}) {
+			return 1
+		}
+		if reflect.DeepEqual(i, []int{2, 0, 1}) {
+			return 1
+		}
+		if reflect.DeepEqual(i, []int{2, 1, 0}) {
+			return -1
+		}
+		if reflect.DeepEqual(i, []int{1, 0, 2}) {
+			return -1
+		}
+		if reflect.DeepEqual(i, []int{0, 2, 1}) {
+			return -1
+		}
+		return 0
+	},
+	"ddd",
+	[]int{3, 3, 3})
+
+// Dirac Delta on 3 indices
+func newIntDirac3(size int) *Tensor {
+	f := func(i ...int) int {
+		if i[0] == i[1] && i[1] == i[2] {
+			return 1
+		}
+		return 0
+	}
+
+	t := NewIntTensor(
+		f,
+		"udd",
+		[]int{size, size, size})
+	return &t
 }
 
 // There are three types of trace errors that can happen.
@@ -77,7 +135,7 @@ func TestTrace(t *testing.T) {
 		dimension     []int
 		producesError bool
 	}{
-		{Product(newVec(1, 2, 3), newRow(4, 5, 6)),
+		{Product(*newVec(1, 2, 3), newRow(4, 5, 6)),
 			0,
 			1,
 			[][]interface{}{{32}},
@@ -102,6 +160,80 @@ func TestTrace(t *testing.T) {
 		// Check dimensions.
 		if !reflect.DeepEqual(r.Dimension(), tt.dimension) {
 			t.Errorf("Dimension mismatch: want %v, got %v", tt.dimension, r.Dimension())
+		}
+	}
+}
+
+func E(e ...Expression) []Expression {
+	return e
+}
+
+// Test evaluating tensors in abstract index notation.
+// Consider this a sort of integration test, as it exercises most public functions.
+func TestEval(t *testing.T) {
+	table := []struct {
+		description      string
+		tensorExpression []Expression
+		reified          [][]interface{}
+		signature        string
+		dimension        []int
+		producesError    bool
+	}{
+		{
+			"Determinant on [1, 2] [3,4]. Should be 6 but we don't scale so 36.",
+			E(eps.D("ijk"), eps.D("pqr"),
+				det1.U("p").D("i"),
+				det1.U("q").D("j"),
+				det1.U("r").D("k")),
+			[][]interface{}{{36}},
+			"",
+			[]int{},
+			false},
+
+		{
+			"Cross product of <2,3,4> and <5,6,7> in abstract index notation.",
+			E(eps.D("ijk"),
+				newVec(2, 3, 4).U("j"),
+				newVec(5, 6, 7).U("k")),
+			[][]interface{}{{-3, 6, -3}},
+			"d",
+			[]int{3},
+			false},
+
+		{
+			"Component-wise multiplication (Hadamard product)",
+			E(newIntDirac3(5).U("a").D("b").D("c"),
+				newVec(1, 2, 3, 4, 5).U("b"),
+				newVec(1, 2, 3, 4, 5).U("c")),
+			[][]interface{}{{1}, {4}, {9}, {16}, {25}},
+			"u",
+			[]int{5},
+			false},
+
+		/*
+			E(dirac_delta3.U("a").D("b").D("c"),
+						newVec(1, 2, 3, 4, 5).U("b"),
+						newVec(1, 2, 3, 4, 5).U("c")),
+						"Hadamard Product (component wise multiplication) on <1,2,3,4,5>."},
+		*/
+	}
+	for _, tt := range table {
+		tensor, err := Eval(tt.tensorExpression...)
+		// We're expecting an error.
+		if tt.producesError && err == nil {
+			t.Errorf("On %v\n Trace attempt should have errored but did not.", tt.description)
+		}
+		// First check the actual numerical values are correct.
+		if !reflect.DeepEqual(tensor.Reify(), tt.reified) {
+			t.Errorf("On %v\n Reified tensor value error: want %v, got %v", tt.description, tt.reified, tensor.Reify())
+		}
+		// Check signatures.
+		if !reflect.DeepEqual(tensor.Signature(), tt.signature) {
+			t.Errorf("On %v\n Signature mismatch: want %v, got %v", tt.description, tt.signature, tensor.Signature())
+		}
+		// Check dimensions.
+		if !reflect.DeepEqual(tensor.Dimension(), tt.dimension) {
+			t.Errorf("On %v\n Dimension mismatch: want %v, got %v", tt.description, tt.dimension, tensor.Dimension())
 		}
 	}
 }
