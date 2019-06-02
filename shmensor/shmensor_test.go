@@ -135,7 +135,7 @@ func TestTrace(t *testing.T) {
 		dimension     []int
 		producesError bool
 	}{
-		{Product(*newVec(1, 2, 3), newRow(4, 5, 6)),
+		{Product(*newVec(1, 2, 3), newRow(4, 5, 6), &Profiler{}),
 			0,
 			1,
 			[][]interface{}{{32}},
@@ -144,7 +144,7 @@ func TestTrace(t *testing.T) {
 			false},
 	}
 	for _, tt := range table {
-		r, err := Trace(tt.tensor, tt.firstIndex, tt.secondIndex)
+		r, err := Trace(tt.tensor, tt.firstIndex, tt.secondIndex, &Profiler{})
 		// We're expecting an error.
 		if tt.producesError && err == nil {
 			t.Errorf("Trace attempt should have errored but did not.")
@@ -218,7 +218,7 @@ func TestEval(t *testing.T) {
 		*/
 	}
 	for _, tt := range table {
-		tensor, err := Eval(tt.tensorExpression...)
+		tensor, err, _ := Eval(tt.tensorExpression...)
 		// We're expecting an error.
 		if tt.producesError && err == nil {
 			t.Errorf("On %v\n Trace attempt should have errored but did not.", tt.description)

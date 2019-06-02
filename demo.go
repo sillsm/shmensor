@@ -57,7 +57,7 @@ func main() {
 	}
 
 	for _, elt := range table {
-		tensor, err := shmeh.Eval(elt.t...)
+		tensor, err, _ := shmeh.Eval(elt.t...)
 		if err != nil {
 			panic(err)
 		}

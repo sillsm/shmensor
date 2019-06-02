@@ -213,7 +213,7 @@ func main() {
 			"Finally, convolution = embed the vectors, tensor product, shift it, sum rows."},
 	}
 	for _, elt := range table {
-		tensor, err := shmeh.Eval(elt.t...)
+		tensor, err, profiler := shmeh.Eval(elt.t...)
 		// Transpose?
 		if elt.aTrans != 0 || elt.bTrans != 0 {
 			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)
@@ -229,6 +229,7 @@ func main() {
 		//fmt.Printf("%v", tensor)
 
 		VisualizePolynomial(tensor, nil, nil)
+		fmt.Printf("%v\n", profiler)
 		fmt.Printf("\n\n\n")
 	}
 

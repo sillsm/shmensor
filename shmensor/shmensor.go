@@ -63,6 +63,20 @@ type Expression struct {
 	signature string
 }
 
+// Profiler collects metrics about Tensor evaluation for
+// debugging and be
+type Profiler struct {
+	Multiplies int
+	Adds       int
+	Mutex      bool
+}
+
+// Pretty printing.
+func (p *Profiler) String() string {
+	s := fmt.Sprintf("Muls: %v\t, Adds: %v\t", p.Multiplies, p.Adds)
+	return s
+}
+
 // Pretty printing.
 func (t Tensor) String() string {
 	ret := "\n"
@@ -148,17 +162,20 @@ func (e Expression) D(indices string) Expression {
 // is only performed when you call Reify().
 //
 // Consider verbose mode boolean to explore what's happening.
-func Eval(t ...Expression) (Tensor, error) {
+func Eval(t ...Expression) (Tensor, error, *Profiler) {
+	// Profiler
+	profiler := &Profiler{}
+
 	// Eval first tensors products
 	if len(t) == 0 {
-		return Tensor{}, nil
+		return Tensor{}, nil, nil
 	}
 
 	// First you tensor product together all the terms.
 	// TODO(Max): Eventually sequences of products could use dynamic programming.
 	head, tail := *t[0].t, t[1:]
 	for _, elt := range tail {
-		head = Product(head, *elt.t)
+		head = Product(head, *elt.t, profiler)
 	}
 
 	var signature []string
@@ -206,9 +223,9 @@ func Eval(t ...Expression) (Tensor, error) {
 		}
 
 		var err error
-		head, err = Trace(head, a, b)
+		head, err = Trace(head, a, b, profiler)
 		if err != nil {
-			return head, err
+			return head, err, profiler
 		}
 		// Now delete a and b from indices and signature
 		indices = append(indices[:b], indices[b+1:]...)
@@ -217,7 +234,7 @@ func Eval(t ...Expression) (Tensor, error) {
 		signature = append(signature[:a], signature[a+1:]...)
 
 	}
-	return head, nil
+	return head, nil, profiler
 }
 
 // Transpose swaps two tensor indices.
@@ -250,7 +267,7 @@ func Transpose(t Tensor, a, b int) (Tensor, error) {
 // from accessing directly
 // and/or verify indices exist to contract
 // and are same dimensions.
-func Trace(t Tensor, a, b int) (Tensor, error) {
+func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
 	// assume a less than b
 	if b < a {
 		b, a = a, b
@@ -275,6 +292,7 @@ func Trace(t Tensor, a, b int) (Tensor, error) {
 				continue
 			}
 			sum = t.t.Add(sum, t.f(inner...))
+			profiler.Adds += 1
 		}
 		return sum
 	}
@@ -300,13 +318,13 @@ func Trace(t Tensor, a, b int) (Tensor, error) {
 	}, nil
 }
 
-func Product(t1, t2 Tensor) Tensor {
+func Product(t1, t2 Tensor, profiler *Profiler) Tensor {
 	f := func(inner ...int) interface{} {
 		i := make([]int, len(inner))
 		copy(i, inner)
 		// Assert they are the same type here
 		// TODO(xam)
-
+		profiler.Multiplies += 1
 		return t1.t.Multiply(t1.f(i[0:len(t1.dim)]...),
 			t2.f(i[len(t1.dim):]...))
 	}
