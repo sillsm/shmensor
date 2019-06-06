@@ -172,15 +172,18 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 		return Tensor{}, nil, nil
 	}
 
-	// First you tensor product together all the terms.
-	// TODO(Max): Eventually sequences of products could use dynamic programming.
-	head, tail := *t[0].t, t[1:]
-	productExpression := Expression{&head, t[0].indices, t[0].signature}
-	for _, elt := range tail {
-		head = Product(head, *elt.t, profiler)
-		productExpression.signature += elt.signature
-		productExpression.indices += elt.indices
-		//
+	/*
+		Evaluation subroutines
+	*/
+
+	// Products two tensors together, returns the result.
+	productSubroutine := func(e1, e2 *Expression) *Expression {
+		t := Product(*e1.t, *e2.t, profiler)
+		return &Expression{
+			&t,
+			e1.indices + e2.indices,
+			e1.signature + e2.signature,
+		}
 	}
 
 	// Contract the first contraction you can in the expression.
@@ -192,9 +195,6 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 			sort.Ints(offsets)
 			if len(offsets) > 2 {
 				return false, fmt.Errorf("%v, Index repeated more than twice", string(ch))
-			}
-			if len(offsets) == 0 {
-				continue
 			}
 			if len(offsets) == 2 {
 				// Do the contraction logic.
@@ -212,9 +212,23 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 		}
 		return false, nil
 	}
+
+	/*
+		Evaluation strategy
+	*/
+	// Product everything together, then contract repeated indices until you can't.
+
+	productExpression := &Expression{t[0].t, t[0].indices, t[0].signature}
+	for i, elt := range t {
+		if i == 0 {
+			continue
+		}
+		productExpression = productSubroutine(productExpression, &elt)
+	}
+
 	// Keep contracting the expression until you can't.
 	for {
-		ok, err := traceSubroutine(&productExpression)
+		ok, err := traceSubroutine(productExpression)
 		if err != nil {
 			panic(err)
 		}
