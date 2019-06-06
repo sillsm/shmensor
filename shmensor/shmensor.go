@@ -14,9 +14,9 @@ package shmensor
 
 import (
 	"fmt"
+	"index/suffixarray"
 	"log"
 	"sort"
-	"strings"
 )
 
 // Type defines a ring element. To implement the interface
@@ -116,6 +116,7 @@ func (t Tensor) CovariantIndices() []int {
 
 func (t *Tensor) Reshape(signature string) {
 	if len(signature) != len(t.signature) {
+		fmt.Printf("Woops Tensor has sig %v\n", t.signature)
 		panic("Trying to perform invalid reshape.")
 	}
 	t.signature = signature
@@ -174,67 +175,55 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 	// First you tensor product together all the terms.
 	// TODO(Max): Eventually sequences of products could use dynamic programming.
 	head, tail := *t[0].t, t[1:]
+	productExpression := Expression{&head, t[0].indices, t[0].signature}
 	for _, elt := range tail {
 		head = Product(head, *elt.t, profiler)
+		productExpression.signature += elt.signature
+		productExpression.indices += elt.indices
+		//
 	}
 
-	var signature []string
-	var indices []string
-
-	// Then find all the repeated indices and collect them in toContract.
-	for _, elt := range t {
-		s := strings.Split(elt.t.signature, "")
-		signature = append(signature, s...)
-		i := strings.Split(elt.indices, "")
-		indices = append(indices, i...)
-	}
-	sortedIndices := make([]string, len(indices))
-	copy(sortedIndices, indices)
-	sort.Strings(sortedIndices)
-
-	var toContract []string
-	var last string
-	for i, elt := range sortedIndices {
-		if elt == last {
-			if i < len(sortedIndices)-1 {
-				if sortedIndices[i+1] == elt {
-					log.Fatalf("too many repeated indices %v", indices)
-				}
+	// Contract the first contraction you can in the expression.
+	// Return false if there was nothing to contract.
+	traceSubroutine := func(e *Expression) (bool, error) {
+		index := suffixarray.New([]byte(e.indices))
+		for _, ch := range e.indices {
+			offsets := index.Lookup([]byte(string(ch)), -1)
+			sort.Ints(offsets)
+			if len(offsets) > 2 {
+				return false, fmt.Errorf("%v, Index repeated more than twice", string(ch))
 			}
-			toContract = append(toContract, elt)
-		}
-		last = elt
-	}
-
-	// Now contract the repeated indices.
-	for _, index := range toContract {
-		a := -1
-		b := -1
-		for j, letter := range indices {
-			if letter == index {
-				if b == -1 && a != -1 {
-					b = j
-					break
+			if len(offsets) == 0 {
+				continue
+			}
+			if len(offsets) == 2 {
+				// Do the contraction logic.
+				traced, err := Trace(*e.t, offsets[0], offsets[1], profiler)
+				e.t = &traced
+				e.signature = e.signature[0:offsets[1]] + e.signature[offsets[1]+1:]
+				e.signature = e.signature[0:offsets[0]] + e.signature[offsets[0]+1:]
+				e.indices = e.indices[0:offsets[1]] + e.indices[offsets[1]+1:]
+				e.indices = e.indices[0:offsets[0]] + e.indices[offsets[0]+1:]
+				if err != nil {
+					return true, err
 				}
-				if a == -1 {
-					a = j
-				}
+				return true, nil
 			}
 		}
-
-		var err error
-		head, err = Trace(head, a, b, profiler)
+		return false, nil
+	}
+	// Keep contracting the expression until you can't.
+	for {
+		ok, err := traceSubroutine(&productExpression)
 		if err != nil {
-			return head, err, profiler
+			panic(err)
 		}
-		// Now delete a and b from indices and signature
-		indices = append(indices[:b], indices[b+1:]...)
-		signature = append(signature[:b], signature[b+1:]...)
-		indices = append(indices[:a], indices[a+1:]...)
-		signature = append(signature[:a], signature[a+1:]...)
-
+		if !ok {
+			break
+		}
 	}
-	return head, nil, profiler
+
+	return *productExpression.t, nil, profiler
 }
 
 // Transpose swaps two tensor indices.
