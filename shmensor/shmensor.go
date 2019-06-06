@@ -217,7 +217,28 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 		Evaluation strategy
 	*/
 	// Product everything together, then contract repeated indices until you can't.
+	rhs := &Expression{t[len(t)-1].t, t[len(t)-1].indices, t[len(t)-1].signature}
+	for i := len(t) - 1; i >= 0; i-- {
+		if i == len(t)-1 {
+			continue
+		}
+		rhs = productSubroutine(&t[i], rhs)
+		//fmt.Printf("RHS pre: %v \n", rhs.indices)
+		for {
+			ok, err := traceSubroutine(rhs)
+			if err != nil {
+				panic(err)
+			}
+			if !ok {
+				break
+			}
+		}
+		//fmt.Printf("RHS post: %v \n", rhs.indices)
 
+	}
+	return *rhs.t, nil, profiler
+
+	// product everything together
 	productExpression := &Expression{t[0].t, t[0].indices, t[0].signature}
 	for i, elt := range t {
 		if i == 0 {
@@ -271,6 +292,7 @@ func Transpose(t Tensor, a, b int) (Tensor, error) {
 // and/or verify indices exist to contract
 // and are same dimensions.
 func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
+
 	// assume a less than b
 	if b < a {
 		b, a = a, b
