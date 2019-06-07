@@ -69,11 +69,12 @@ type Profiler struct {
 	Multiplies int
 	Adds       int
 	Mutex      bool
+	TraceCache int
 }
 
 // Pretty printing.
 func (p *Profiler) String() string {
-	s := fmt.Sprintf("Muls: %v\t, Adds: %v\t", p.Multiplies, p.Adds)
+	s := fmt.Sprintf("Muls: %v\t Adds: %v\t Cached Traces Hits: %v", p.Multiplies, p.Adds, p.TraceCache)
 	return s
 }
 
@@ -237,28 +238,6 @@ func Eval(t ...Expression) (Tensor, error, *Profiler) {
 
 	}
 	return *rhs.t, nil, profiler
-
-	// product everything together
-	productExpression := &Expression{t[0].t, t[0].indices, t[0].signature}
-	for i, elt := range t {
-		if i == 0 {
-			continue
-		}
-		productExpression = productSubroutine(productExpression, &elt)
-	}
-
-	// Keep contracting the expression until you can't.
-	for {
-		ok, err := traceSubroutine(productExpression)
-		if err != nil {
-			panic(err)
-		}
-		if !ok {
-			break
-		}
-	}
-
-	return *productExpression.t, nil, profiler
 }
 
 // Transpose swaps two tensor indices.
@@ -301,6 +280,7 @@ func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
 		log.Fatalf("trace error incompatible dims")
 	}
 
+	cache := make(map[string]interface{})
 	g := func(i ...int) interface{} { //takes in dim 2 less
 		var sum interface{}
 		// Shift args for the 2 repeated indices.
@@ -310,16 +290,24 @@ func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
 		copy(inner[a+1:], inner[a:])
 		copy(inner[b+1:], inner[b:])
 
-		for k := 0; k < t.dim[a]; k++ {
-			inner[a], inner[b] = k, k
-			if k == 0 {
-				sum = t.f(inner...)
-				continue
+		key := fmt.Sprintf("%v|%v|%v", inner, a, b)
+		if hit, ok := cache[key]; !ok {
+			for k := 0; k < t.dim[a]; k++ {
+				inner[a], inner[b] = k, k
+				if k == 0 {
+					sum = t.f(inner...)
+					continue
+				}
+				sum = t.t.Add(sum, t.f(inner...))
+				profiler.Adds += 1
 			}
-			sum = t.t.Add(sum, t.f(inner...))
-			profiler.Adds += 1
+			cache[key] = sum
+			return sum
+		} else {
+			profiler.TraceCache += 1
+			return hit
 		}
-		return sum
+
 	}
 
 	var sig string
