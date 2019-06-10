@@ -81,7 +81,11 @@ func (p *Profiler) String() string {
 // Pretty printing.
 func (t Tensor) String() string {
 	ret := "\n"
-	fmt.Printf("%v", t.Reify())
+	grid := t.Reify()
+	for _, row := range grid {
+		ret += fmt.Sprintf("%v\n", row)
+	}
+	//fmt.Printf("%v", t.Reify())
 	ret += fmt.Sprintf("Signature: \"%v\"\n\n", t.signature)
 	return ret
 }
@@ -332,6 +336,9 @@ func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
 }
 
 func Product(t1, t2 Tensor, profiler *Profiler) Tensor {
+	if profiler == nil {
+		profiler = &Profiler{}
+	}
 	f := func(inner ...int) interface{} {
 		i := make([]int, len(inner))
 		copy(i, inner)

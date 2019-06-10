@@ -13,6 +13,8 @@
 package shmensor
 
 import (
+	"fmt"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -166,6 +168,118 @@ func TestTrace(t *testing.T) {
 
 func E(e ...Expression) []Expression {
 	return e
+}
+
+// Reify
+func TestReify(t *testing.T) {
+	// Given signature and dimensions, create a dummy tensor
+	testTensor := func(signature string, dimensions []int) Tensor {
+		f := func(i ...int) int {
+			// Prepend the digits with 9
+			value := 9 * int(math.Pow10(len(i)))
+			for place, j := range i {
+				value += j * int(math.Pow10(len(i)-place-1))
+			}
+			return value
+		}
+		t := NewIntTensor(
+			f,
+			signature,
+			dimensions)
+		return t
+	}
+
+	table := []struct {
+		description string
+		tensor      Tensor
+		reified     [][]interface{}
+	}{
+		{
+			"Int vector",
+			*newVec(2, 3, 4, 5, 6),
+			[][]interface{}{
+				{2}, {3}, {4}, {5}, {6},
+			},
+		},
+		{
+			"Int vector",
+			Product(*newVec(1, 2, 3), *newVec(1, 2, 3), nil),
+			[][]interface{}{
+				{1},
+				{2},
+				{3},
+				{2},
+				{4},
+				{6},
+				{3},
+				{6},
+				{9},
+			},
+		},
+		{
+			"Int row",
+			newRow(1, 3, 5, 7, 9),
+			[][]interface{}{
+				{1, 3, 5, 7, 9},
+			},
+		},
+		{
+			"Test Tensor 1",
+			testTensor("dud", []int{4, 2, 2}),
+			[][]interface{}{
+				{9000, 9001, 9100, 9101, 9200, 9201, 9300, 9301},
+				{9010, 9011, 9110, 9111, 9210, 9211, 9310, 9311},
+			},
+		},
+		{
+			"Test Tensor 2",
+			testTensor("ddu", []int{4, 2, 2}),
+			[][]interface{}{
+				{9000, 9010, 9100, 9110, 9200, 9210, 9300, 9310},
+				{9001, 9011, 9101, 9111, 9201, 9211, 9301, 9311},
+			},
+		},
+		{
+			"Test Tensor 3",
+			testTensor("uuudd", []int{2, 2, 2, 3, 2}),
+			[][]interface{}{
+				{900000, 900001, 900010, 900011, 900020, 900021},
+				{900100, 900101, 900110, 900111, 900120, 900121},
+				{901000, 901001, 901010, 901011, 901020, 901021},
+				{901100, 901101, 901110, 901111, 901120, 901121},
+				{910000, 910001, 910010, 910011, 910020, 910021},
+				{910100, 910101, 910110, 910111, 910120, 910121},
+				{911000, 911001, 911010, 911011, 911020, 911021},
+				{911100, 911101, 911110, 911111, 911120, 911121},
+			},
+		},
+	}
+
+	for _, tt := range table {
+		r := tt.tensor.Reify()
+		if !reflect.DeepEqual(r, tt.reified) {
+			// Pretty print
+			got := "\n"
+			for _, row := range r {
+				got += fmt.Sprintf("\n")
+				for _, elt := range row {
+					got += fmt.Sprintf("%v, ", elt)
+				}
+			}
+			want := "\n"
+			for _, row := range tt.reified {
+				want += fmt.Sprintf("\n")
+				for _, elt := range row {
+					want += fmt.Sprintf("%v, ", elt)
+				}
+			}
+
+			t.Errorf("On %v\t%v\t%v\n got %v, want %v", tt.description,
+				tt.tensor.Signature(), tt.tensor.Dimension(),
+				got, want)
+
+		}
+	}
 }
 
 // Test evaluating tensors in abstract index notation.
