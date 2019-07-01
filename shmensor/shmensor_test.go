@@ -170,7 +170,8 @@ func E(e ...Expression) []Expression {
 	return e
 }
 
-// Reify
+// Reify has three properites:
+//
 func TestReify(t *testing.T) {
 	// Given signature and dimensions, create a dummy tensor
 	testTensor := func(signature string, dimensions []int) Tensor {
