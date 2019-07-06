@@ -261,6 +261,9 @@ func Transpose(t Tensor, a, b int) (Tensor, error) {
 		return t.f(inner...)
 	}
 
+	// Must swap dim
+	t.dim[a], t.dim[b] = t.dim[b], t.dim[a]
+
 	return Tensor{
 		g,
 		t.signature,
@@ -281,7 +284,7 @@ func Trace(t Tensor, a, b int, profiler *Profiler) (Tensor, error) {
 		b, a = a, b
 	}
 	if t.dim[a] != t.dim[b] {
-		log.Fatalf("trace error incompatible dims")
+		log.Fatalf("trace error incompatible dims %v, %v", t.dim[a], t.dim[b])
 	}
 
 	cache := make(map[string]interface{})

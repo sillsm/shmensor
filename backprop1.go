@@ -1,0 +1,274 @@
+// Copyright 2019 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+// https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+package main
+
+import (
+	"fmt"
+	shmeh "shmensor/shmensor"
+)
+
+// Prettified
+// u
+// u
+// u d d d
+
+func detectNesting(signature string, dim []int, x, y int) (int, int) {
+	retX := 0
+	retY := 0
+	xi := 1
+	yi := 1
+	for i := len(signature) - 1; i >= 0; i-- {
+		ch := signature[i]
+		//for in, ch := range signature {
+		switch string(ch) {
+		case "u":
+			yi *= dim[i]
+			if (y)%yi == 0 {
+				retY++
+			}
+		case "d":
+			xi *= dim[i]
+			if (x)%xi == 0 {
+				retX++
+			}
+		}
+	}
+	return retX, retY
+}
+
+// This function prints the nested covariant labels for a tensor.
+func printCovariantLabels(d []int) {
+	names := []string{"z", "y"}
+	dim := 1
+	for _, elt := range d {
+		dim *= elt
+	}
+	tally := dim
+	for vari, arity := range d {
+		tally /= arity
+		fmt.Println()
+		ch := -1
+		for i := 0; i < dim; i++ {
+			j := (i / tally) % arity
+			if j != ch && (i%tally) == tally/2 {
+				if len(d) > len(names) {
+					panic("Didn't plan more than 2 covariant indices.")
+				}
+				fmt.Printf("%v", names[len(names)-len(d):][vari])
+				fmt.Printf("%v\t", arity-j-1)
+				ch = j
+				continue
+			}
+			fmt.Printf("\t")
+		}
+	}
+}
+
+func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
+	grid := t.Reify()
+	// Label the top
+	// the first multiple of 3 (the zs)
+	// then
+	// the second multuple of 3 (the ys)
+
+	printCovariantLabels(t.CovariantIndices())
+
+	for y, row := range grid {
+		_, lines := detectNesting(t.Signature(), t.Dimension(), 0, y)
+		for i := 0; i < lines; i++ {
+			fmt.Printf("\n")
+			for j := 0; j < len(row); j++ {
+				fmt.Printf("######\t")
+			}
+			fmt.Printf("\n")
+		}
+		for x := range row {
+			bars, _ := detectNesting(t.Signature(), t.Dimension(), x, 0)
+			for i := 0; i < bars; i++ {
+				fmt.Printf("|")
+			}
+
+			fmt.Printf("%v\t", grid[y][x])
+
+		}
+		fmt.Printf("\n")
+	}
+}
+
+func E(e ...shmeh.Expression) []shmeh.Expression {
+	return e
+}
+
+func main() {
+	table := []struct {
+		t []shmeh.Expression
+		// Reshape it to make it visually compelling.
+		// In reality, all these tensors should be all "uuuu", or the
+		// contraction with the "ud" partial derivative doesn't make sense.
+		reshape        string
+		aTrans, bTrans int
+		desc           string
+	}{
+		{E(weights.U("j").D("k").D("i")),
+			"dud",
+			0, 0,
+			"\nLet's examine the initial weights for our three layer system." +
+				"\n\ninput layer\t\thidden layer 1\t\t" +
+				"hidden layer 2\t\toutput layer"},
+	}
+	for _, elt := range table {
+		tensor, err, profiler := shmeh.Eval(elt.t...)
+		// Transpose?
+		if elt.aTrans != 0 || elt.bTrans != 0 {
+			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)
+
+		}
+
+		tensor.Reshape(elt.reshape)
+
+		if err != nil {
+			fmt.Printf("Panicking\n")
+			panic(err)
+		}
+		fmt.Printf("%v\n", elt.desc)
+		//fmt.Printf("%v", tensor)
+
+		VisualizePolynomial(tensor, nil, nil)
+		fmt.Printf("%v\n", profiler)
+		fmt.Printf("\n\n\n")
+	}
+
+	// Now run a [1,1,0] two input vector into the system
+	activation := newMatrix(
+		[]float64{1, 0, 0, 0},
+		[]float64{1, 0, 0, 0},
+		[]float64{0, 0, 0, 0},
+	)
+
+	preserveShift := newMatrix(
+		[]float64{0, 1, 0, 0},
+		[]float64{0, 0, 1, 0},
+		[]float64{0, 0, 0, 1},
+		[]float64{0, 0, 0, 0},
+	)
+	fmt.Printf("Now we're going to use a simple tensor expression\n" +
+		"and repeat its evaluation to drive a signal\n" +
+		"from the input to the output of a neural net.")
+	fmt.Printf("%v", activation)
+
+	expression := E(
+		weights.D("a").U("b").D("c"),
+		activation.U("c").D("d"),
+		dirac_delta4.U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
+		preserveShift.U("e").D("f"),       // Right-shift.
+	)
+
+	// Run an input signal through the network.
+	for i := 0; i < 3; i++ {
+		fmt.Printf("%v application", i)
+		activation, _, _ = shmeh.Eval(expression...)
+		fmt.Printf("%v", activation)
+	}
+
+	fmt.Printf("This is almost the correct expression.\n" +
+		"We also need to add biases to each node\n" +
+		"and then apply a sigmoid function.\n")
+
+}
+
+var weights = shmeh.NewRealTensor(
+	func(i ...int) float64 {
+		z := [][][]float64{
+			{
+				{.2, .2, 0},
+				{.2, .2, 0},
+				{.2, .2, 0}}, // 2 input layer
+			{
+				{.5, .5, .5},
+				{.5, .5, .5},
+				{.5, .5, .5}}, // 1 first hidden layer
+			{
+				{.3, .3, .3}, //.5s here
+				{0, 0, 0},
+				{0, 0, 0}}, // 2nd hidden layer to single output
+			{
+				{1, 0, 0},
+				{0, 1, 0},
+				{0, 0, 1}}, // don't transition the output layer
+		}
+		return z[i[0]][i[1]][i[2]]
+	},
+	"dud",
+	// UD = (u)(ud)
+	[]int{4, 3, 3},
+)
+
+func identity(i ...int) int {
+	val := i[0]
+	for _, elt := range i {
+		if elt != val {
+			return 0
+		}
+	}
+	return 1
+}
+
+func identityFloat(i ...int) float64 {
+	val := i[0]
+	for _, elt := range i {
+		if elt != val {
+			return 0
+		}
+	}
+	return 1
+}
+
+var dirac_delta4 = shmeh.NewRealTensor(
+	identityFloat,
+	"udu",
+	[]int{4, 4, 4},
+)
+
+// Embed returns a matrix which will
+// embed an input a vector in a different vector space.
+// When larger, it zero-pads all new dimensions.
+func Embed(inputDim, outputDim int) *shmeh.Tensor {
+	t := shmeh.NewRealTensor(
+		identityFloat,
+		"ud",
+		[]int{outputDim, inputDim},
+	)
+	return &t
+}
+
+// New vector helper function.
+func newVec(i ...float64) *shmeh.Tensor {
+	t := shmeh.NewRealTensor(
+		func(j ...int) float64 {
+			return i[j[0]]
+		},
+		"u",
+		[]int{len(i)})
+	return &t
+}
+
+// New matrix helper function.
+func newMatrix(f ...[]float64) shmeh.Tensor {
+	t := shmeh.NewRealTensor(
+		func(j ...int) float64 {
+			return f[j[0]][j[1]]
+		},
+		"ud",
+		[]int{len(f), len(f[0])})
+	return t
+}
