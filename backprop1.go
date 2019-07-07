@@ -163,7 +163,9 @@ func main() {
 	)
 	fmt.Printf("Now we're going to use a simple tensor expression\n" +
 		"and repeat its evaluation to drive a signal\n" +
-		"from the input to the output of a neural net.")
+		"from the input to the output of a neural net.\n\nThe expression takes the nth " +
+		"weight matrix above, \napplies it to the nth column in the\n" +
+		"activation matrix, and then shifts everything to the right.\n")
 	fmt.Printf("%v", activation)
 
 	expression := E(
@@ -184,6 +186,38 @@ func main() {
 		"We also need to add biases to each node\n" +
 		"and then apply a sigmoid function.\n")
 
+	fmt.Printf("\nChanging gears, let's say we had an error quantity " +
+		"for the output layer.\nHow might we propogate it backwards?\n")
+
+	tWeights, _ := shmeh.Transpose(weights, 1, 2)
+	VisualizePolynomial(tWeights, nil, nil)
+
+	leftShift := newMatrix(
+		[]float64{0, 0, 0, 0},
+		[]float64{1, 0, 0, 0},
+		[]float64{0, 1, 0, 0},
+		[]float64{0, 0, 1, 0},
+	)
+	errorInOutput := newMatrix(
+		[]float64{0, 0, 0, 15},
+		[]float64{0, 0, 0, 0},
+		[]float64{0, 0, 0, 0},
+	)
+
+	backProp1 := E(
+		tWeights.D("a").U("b").D("c"),
+		errorInOutput.U("c").D("d"),
+		dirac_delta4.U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
+		leftShift.U("e").D("f"),           // Right-shift.
+	)
+
+	leftShift = leftShift
+	errorInOutput = errorInOutput
+	for i := 0; i < 3; i++ {
+		fmt.Printf("%v application", i)
+		errorInOutput, _, _ = shmeh.Eval(backProp1...)
+		fmt.Printf("%v", errorInOutput)
+	}
 }
 
 var weights = shmeh.NewRealTensor(
