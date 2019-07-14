@@ -155,7 +155,7 @@ func main() {
 		[]float64{0, 0, 0, 0},
 	)
 
-	preserveShift := newMatrix(
+	rightShift := newMatrix(
 		[]float64{0, 1, 0, 0},
 		[]float64{0, 0, 1, 0},
 		[]float64{0, 0, 0, 1},
@@ -172,7 +172,7 @@ func main() {
 		weights.D("a").U("b").D("c"),
 		activation.U("c").D("d"),
 		dirac_delta4.U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
-		preserveShift.U("e").D("f"),       // Right-shift.
+		rightShift.U("e").D("f"),          // Right-shift.
 	)
 
 	// Run an input signal through the network.
@@ -204,20 +204,30 @@ func main() {
 		[]float64{0, 0, 0, 0},
 	)
 
-	backProp1 := E(
-		tWeights.D("a").U("b").D("c"),
-		errorInOutput.U("c").D("d"),
-		dirac_delta4.U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
-		leftShift.U("e").D("f"),           // Right-shift.
+	pad := newMatrix(
+		[]float64{0, 0, 0},
+		[]float64{1, 0, 0},
+		[]float64{0, 1, 0},
+		[]float64{0, 0, 1},
 	)
 
-	leftShift = leftShift
-	errorInOutput = errorInOutput
+	pad.Reshape("du")
+
+	backProp1 := E(
+		pad.D("a").U("z"),
+		tWeights.D("z").U("b").D("c"),
+		errorInOutput.U("c").D("d"),
+		dirac3(4, 4, 4).U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
+		leftShift.U("e").D("f"),              // Right-shift.
+	)
+	fmt.Printf("\nError %v\n", errorInOutput)
 	for i := 0; i < 3; i++ {
 		fmt.Printf("%v application", i)
 		errorInOutput, _, _ = shmeh.Eval(backProp1...)
 		fmt.Printf("%v", errorInOutput)
 	}
+	fmt.Printf("\nFinally, we take the back-propagated errors and the\n" +
+		"forward propagated activations, and munge them together.\n")
 }
 
 var weights = shmeh.NewRealTensor(
@@ -235,16 +245,12 @@ var weights = shmeh.NewRealTensor(
 				{.3, .3, .3}, //.5s here
 				{0, 0, 0},
 				{0, 0, 0}}, // 2nd hidden layer to single output
-			{
-				{1, 0, 0},
-				{0, 1, 0},
-				{0, 0, 1}}, // don't transition the output layer
 		}
 		return z[i[0]][i[1]][i[2]]
 	},
 	"dud",
 	// UD = (u)(ud)
-	[]int{4, 3, 3},
+	[]int{3, 3, 3},
 )
 
 func identity(i ...int) int {
@@ -270,8 +276,17 @@ func identityFloat(i ...int) float64 {
 var dirac_delta4 = shmeh.NewRealTensor(
 	identityFloat,
 	"udu",
-	[]int{4, 4, 4},
+	[]int{4, 4, 3},
 )
+
+func dirac3(x, y, z int) *shmeh.Tensor {
+	t := shmeh.NewRealTensor(
+		identityFloat,
+		"udu",
+		[]int{x, y, z},
+	)
+	return &t
+}
 
 // Embed returns a matrix which will
 // embed an input a vector in a different vector space.
