@@ -98,7 +98,7 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 				fmt.Printf("|")
 			}
 
-			fmt.Printf("%v\t", grid[y][x])
+			fmt.Printf("%.3f\t", grid[y][x])
 
 		}
 		fmt.Printf("\n")
@@ -228,6 +228,33 @@ func main() {
 	}
 	fmt.Printf("\nFinally, we take the back-propagated errors and the\n" +
 		"forward propagated activations, and munge them together.\n")
+	activations := newMatrix(
+		[]float64{.1, .4, .7, .54},
+		[]float64{.2, .5, .8, 0},
+		[]float64{.0, .6, .9, 0},
+	)
+
+	errors := newMatrix(
+		[]float64{1, 3, 6, 15},
+		[]float64{2, 4, 7, 0},
+		[]float64{0, 5, 8, 0},
+	)
+	activations = activations
+	errors = errors
+
+	delErrorWrtWeights := E(
+		dirac3(3, 4, 4).U("x").D("b").D("c"),
+		activations.U("a").D("b"),
+		errors.U("d").D("c"),
+	)
+	fmt.Printf("Current Weights\n")
+	VisualizePolynomial(weights, nil, nil)
+	fmt.Printf("Activations %v", activations)
+	fmt.Printf("Errors %v", errors)
+
+	d, _, _ := shmeh.Eval(delErrorWrtWeights...)
+	d.Reshape("dud")
+	VisualizePolynomial(d, nil, nil)
 }
 
 var weights = shmeh.NewRealTensor(
