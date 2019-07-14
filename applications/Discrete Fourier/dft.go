@@ -14,7 +14,10 @@ package main
 
 import (
 	"fmt"
-	shmeh "shmensor/shmensor"
+	"math"
+	"math/cmplx"
+	shmeh "github.com/sillsm/shmensor/shmensor"
+
 )
 
 // Prettified
@@ -96,7 +99,7 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 				fmt.Printf("|")
 			}
 
-			fmt.Printf("%v\t", grid[y][x])
+			fmt.Printf("%.5f\t", grid[y][x])
 
 		}
 		fmt.Printf("\n")
@@ -117,100 +120,40 @@ func main() {
 		aTrans, bTrans int
 		desc           string
 	}{
-		{E(D3.U("i").D("j"), P1.U("j")),
-			"u",
-			0, 0,
-			"Partial derivative of 3x^2 + 5x + 10."},
-		{E(P2.U("m").U("k")),
+		{E(newDFTTensor(2).U("i").D("j")),
 			"ud",
 			0, 0,
-			"Matrix representation of polynomial\nx^2y^2 + 3x^2y + x^2 + 5xy^2 + 4xy + y^2 + 2"},
-		{E(D3.U("i").D("m"), P2.U("m").U("k")),
+			"Let's start with visualizing the components of some DFT Matrices. 2:"},
+		{E(newDFTTensor(3).U("i").D("j")),
 			"ud",
 			0, 0,
-			"Partial derivative w.r.t x"},
-		{E(D3.U("i").D("k"), P2.U("m").U("k")),
-			"ud",
-			0, 1,
-			"Partial derivative w.r.t y"},
-		{E(P3.U("l").U("j").U("m")),
-			"dud",
-			0, 0,
-			"Matrix representation of polynomial\n3x^2y^2z^2 + xyz^2 + 2yz^2 + 5x^2y^2z + 3x^2z + 7xy"},
-		{E(D3.U("i").D("l"), P3.U("l").U("j").U("m")),
-			"dud",
-			0, 0,
-			"Derivative w.r.t. z"},
-		{E(D3.U("i").D("j"), P3.U("l").U("j").U("m")),
-			"udd",
-			0, 0,
-			"Derivative w.r.t. x"},
-		{E(D3.U("i").D("z"), P3.U("l").U("j").U("z")),
-			"udd",
-			0, 2,
-			"Derivative w.r.t. y "},
-		//
-		// We finish with some Taylor shifts!
-		//
-		{E(DerivativeTower2.U("i").D("j").U("k")),
-			"dud",
-			0, 0,
-			"Tower of all nth derivatives of quadratic polynomials."},
-		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(2, 1, -1).U("k")),
+			"3:"},
+		{E(newDFTTensor(4).U("i").D("j")),
 			"ud",
 			0, 0,
-			"Derivative tower contracted with a base quadratic polynomial (2x-1)(x+2) =2x^2 + x -1 "},
-		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(2, 1, -1).U("k"), newVec(4, -2, 1).U("j")),
-			"u",
-			0, 0,
-			"We can do arbitrary horizontal shifts by multiplying this matrix\n" +
-				"by a shift vector <-disp^0, -disp^1 ...>. Here we shift to the right by 2."},
-		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(3, -18, -21).U("k")),
+			"4:"},
+		{E(newDFTTensor(5).U("i").D("j")),
 			"ud",
 			0, 0,
-			"Derivative tower contracted with a base quadratic polynomial (3x+3)(x-7) =3x^2-18x-21 "},
-		{E(DerivativeTower2.D("i").U("j").D("k"), newVec(3, -18, -21).U("k"), newVec(25, 5, 1).U("j")),
-			"u",
-			0, 0,
-			"We can do arbitrary horizontal shifts by multiplying this matrix\n" +
-				"by a shift vector <-disp^0, -disp^1 ...>. Here we shift to the left by 5."},
-		// Finally some mucking about with progressive shift.
-		// Copy this over to demo.go, for eventual inclusion in DFT.go as part of convolution.
-		{E(ProgressiveShift3.D("i").U("j").D("k"), newVec(1, 2, 3).U("k")),
+			"5:"},
+		{E(newDFTTensor(8).U("i").D("j")),
 			"ud",
 			0, 0,
-			"Progressive right shift on <1, 2, 3>"},
-		{E(dirac_delta3.U("a").U("b").D("c"), ProgressiveShift3.D("b").U("x").D("y"), elements.U("c").U("y")),
+			"8:"},
+		{E(newDFTTensor(5).U("i").D("j"), newIDFTTensor(5).U("j").D("k")),
 			"ud",
 			0, 0,
-			"Progressive right shift on P2"},
-		{E(ProgressiveShift5.D("a").U("b").D("c")),
-			"dud",
-			0, 0,
-			"Progressive right shift on 5 elements."},
-		{E(newVec(5, 4, 3, 2, 1).U("a"), newVec(5, 6, 7, 8, 9).U("b")),
-			"ud",
-			0, 0,
-			"Tensor product of (5x^4 + 4x^3 + 3x^2 + 2x + 1) * (5x^4 + 6x^3 + 7x^2 + 8x + 9.)"},
-		{E(dirac_delta5.U("a").U("b").D("c"), ProgressiveShift5.D("b").U("x").D("y"),
-			newVec(5, 4, 3, 2, 1).U("c"), newVec(5, 6, 7, 8, 9).U("y")),
-			"ud",
-			0, 0,
-			"Progressive shift the product."},
+			"Let's demonstrate the IDFT matrix and the DFT matrix are inverses."},
 		{E(
-			dirac_delta9.U("a").U("b").D("i"), ProgressiveShift9.D("b").U("x").D("l"),
-			Embed(5, 9).U("i").D("j"), newVec(5, 4, 3, 2, 1).U("j"), //new vector index is i
-			Embed(5, 9).U("l").D("z"), newVec(5, 6, 7, 8, 9).U("z")), //new vector index is l
-			"ud",
-			0, 0,
-			"Progressive shift the product after proper embedding."},
-		{E(newVec(1, 1, 1, 1, 1, 1, 1, 1, 1).U("a"), // All ones is a row-summing tensor.
-			dirac_delta9.U("a").U("b").D("i"), ProgressiveShift9.D("b").U("x").D("l"),
-			Embed(5, 9).U("i").D("j"), newVec(5, 4, 3, 2, 1).U("j"), //new vector index is i
-			Embed(5, 9).U("l").D("z"), newVec(5, 6, 7, 8, 9).U("z")), //new vector index is l
+			newIDFTTensor(9).U("z").D("h"),           // Finally, we invert.
+			newComplexDirac3(9).U("h").D("f").D("g"), // Hadamard product those babies.
+			newDFTTensor(9).U("f").D("a"),            // DFT the first two polynomials.
+			newDFTTensor(9).U("g").D("x"),
+			Embed(5, 9).U("a").D("b"), newVec(5, 4, 3, 2, 1).U("b"), //new vector index is a
+			Embed(5, 9).U("x").D("y"), newVec(5, 6, 7, 8, 9).U("y")), //new vector index is x
 			"u",
 			0, 0,
-			"Finally, convolution = embed the vectors, tensor product, shift it, sum rows."},
+			"Finally, we compute the product of the DFT of both polynomials, then invert."},
 	}
 	for _, elt := range table {
 		tensor, err, profiler := shmeh.Eval(elt.t...)
@@ -393,42 +336,87 @@ var ProgressiveShift9 = shmeh.NewIntTensor(
 // embed an input a vector in a different vector space.
 // When larger, it zero-pads all new dimensions.
 func Embed(inputDim, outputDim int) *shmeh.Tensor {
-	t := shmeh.NewIntTensor(
-		identity,
+	f := func(i ...int) complex128 {
+		return complex(float64(identity(i...)), 0)
+	}
+	t := shmeh.NewComplexTensor(
+		f,
 		"ud",
 		[]int{outputDim, inputDim},
 	)
 	return &t
 }
 
-// 0th, first, and 2nd derivatvies on 2nd degree polynomials.
-var DerivativeTower2 = shmeh.NewIntTensor(
-	func(i ...int) int {
-		z := [][][]int{
-			{
-				{0, 0, 0},
-				{0, 0, 0},
-				{2 / 2, 0, 0}}, // 1/n!
-			{
-				{0, 0, 0},
-				{2, 0, 0},
-				{0, 1, 0}},
-			{
-				{1, 0, 0},
-				{0, 1, 0},
-				{0, 0, 1}},
+// Does a DFT matrix.
+func DFT(n int) func(i ...int) complex128 {
+	increment := -2 * math.Pi / float64(n)
+	var motherRow []complex128
+	for j := 0; j < n; j++ {
+		num := increment * float64(j)
+		x, y := math.Cos(num), math.Sin(num)
+		if math.Abs(x) < .000000000001 {
+			x = 0
 		}
-		return z[i[0]][i[1]][i[2]]
-	},
-	"dud",
-	[]int{3, 3, 3},
-)
+		if math.Abs(y) < .000000000001 {
+			y = 0
+		}
+		motherRow = append(motherRow, complex(x, y))
+	}
+
+	f := func(i ...int) complex128 {
+		if len(i) != 2 {
+			panic("Trying to get DFT coefficients where dim != 2")
+		}
+		x, y := i[0], i[1]
+		return motherRow[(x * y % n)]
+	}
+	return f
+}
+
+func newComplexDirac3(size int) *shmeh.Tensor {
+	f := func(i ...int) complex128 {
+		if i[0] == i[1] && i[1] == i[2] {
+			return complex(1., 0.)
+		}
+		return complex(0., 0.)
+	}
+
+	t := shmeh.NewComplexTensor(
+		f,
+		"dud",
+		[]int{size, size, size})
+	return &t
+}
+
+func newDFTTensor(size int) *shmeh.Tensor {
+	t := shmeh.NewComplexTensor(
+		DFT(size),
+		"ud",
+		[]int{size, size})
+	return &t
+
+}
+
+// Inverse DFT is equal to the conjugate transpose of the DFT.
+// Because a DFT is a self-adjoint unitary matrix.
+// Or something?
+func newIDFTTensor(size int) *shmeh.Tensor {
+	dft := DFT(size)
+	f := func(i ...int) complex128 {
+		return cmplx.Conj(dft(i...)) / complex(float64(size), 0) // conjugate that DFT, then norm it by the size.
+	}
+	t := shmeh.NewComplexTensor(
+		f,
+		"ud",
+		[]int{size, size})
+	return &t
+}
 
 // New vector helper function.
 func newVec(i ...int) *shmeh.Tensor {
-	t := shmeh.NewIntTensor(
-		func(j ...int) int {
-			return i[j[0]]
+	t := shmeh.NewComplexTensor(
+		func(j ...int) complex128 {
+			return complex(float64(i[j[0]]), 0)
 		},
 		"u",
 		[]int{len(i)})

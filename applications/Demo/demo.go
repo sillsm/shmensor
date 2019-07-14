@@ -15,7 +15,8 @@ package main
 import (
 	"fmt"
 	"reflect"
-	shmeh "shmensor/shmensor"
+	shmeh "github.com/sillsm/shmensor/shmensor"
+
 )
 
 func E(e ...shmeh.Expression) []shmeh.Expression {

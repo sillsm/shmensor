@@ -14,7 +14,7 @@ package main
 
 import (
 	"fmt"
-	shmeh "shmensor/shmensor"
+	shmeh "github.com/sillsm/shmensor/shmensor"
 )
 
 // Prettified
