@@ -70,6 +70,20 @@ func newMatrix(v [][]int) *Tensor {
 	return &t
 }
 
+// New string matrix helper function.
+func newStringMatrix(v [][]string) *Tensor {
+	vals := make([][]string, len(v))
+	copy(vals, v)
+	t := NewStringTensor(
+		func(i ...int) string {
+			return vals[i[0]][i[1]]
+		},
+		"ud",
+		[]int{len(v), len(v[0])},
+	)
+	return &t
+}
+
 var det1 = NewIntTensor(
 	func(i ...int) int {
 		if i[0] == i[1] {
@@ -121,6 +135,78 @@ func newIntDirac3(size int) *Tensor {
 		"udd",
 		[]int{size, size, size})
 	return &t
+}
+
+// Test adding two tensors together.
+func TestPlus(t *testing.T) {
+	table := []struct {
+		description string
+		a           *Tensor
+		b           *Tensor
+		reified     [][]interface{}
+		err         bool
+	}{
+		{
+			"Adding two 2x2 string matrices.",
+			newStringMatrix([][]string{
+				{"a", "b"},
+				{"c", "d"},
+			}),
+			newStringMatrix([][]string{
+				{"w", "x"},
+				{"y", "z"},
+			}),
+			[][]interface{}{
+				{"a + w", "b + x"},
+				{"c + y", "d + z"},
+			},
+			false,
+		},
+		{
+			"Adding matrices of incompatible dimension.",
+			newStringMatrix([][]string{
+				{"a", "b", "c"},
+				{"d", "e", "f"},
+			}),
+			newStringMatrix([][]string{
+				{"w", "x"},
+				{"y", "z"},
+			}),
+			[][]interface{}{},
+			true,
+		},
+		{
+			"Adding matrices of incompatible type.",
+			newStringMatrix([][]string{
+				{"a", "b"},
+				{"d", "e"},
+			}),
+			newMatrix([][]int{
+				{1, 2},
+				{3, 4},
+			}),
+			[][]interface{}{},
+			true,
+		},
+	}
+	for _, tt := range table {
+		p, err := Plus(*tt.a, *tt.b)
+		if err != nil && !tt.err {
+			t.Errorf("Got an error in the plus test when not expecting one.")
+		}
+		if err == nil && tt.err {
+			t.Errorf("On %v | Expected an error in the plus test but didn't get one.",
+				tt.description)
+		}
+		// If was expecting an error and caught one, keep going.
+		if tt.err {
+			continue
+		}
+		s := p.Reify()
+		if !reflect.DeepEqual(s, tt.reified) {
+			t.Errorf("On %v: got %v, want %v", tt.description, s, tt.reified)
+		}
+	}
 }
 
 // There are three types of trace errors that can happen.

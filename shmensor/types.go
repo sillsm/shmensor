@@ -12,6 +12,10 @@
 // limitations under the License.
 package shmensor
 
+import (
+	"fmt"
+)
+
 // This file is used to define some package-default Tensor types.
 // Interface may become open in the future so clients can define their own.
 // For example, Tensor spaces over finite fields, or modules over arbitrary rings.
@@ -72,5 +76,25 @@ func NewComplexTensor(f func(i ...int) complex128, signature string, dim []int) 
 		signature,
 		dim,
 		defaultComplex{},
+	}
+}
+
+// Strings
+type defaultString struct{}
+
+func (ds defaultString) Multiply(x, y interface{}) interface{} {
+	return fmt.Sprintf("(%v)(%v)", x.(string), y.(string))
+}
+
+func (ds defaultString) Add(x, y interface{}) interface{} {
+	return fmt.Sprintf("%v + %v", x.(string), y.(string))
+}
+
+func NewStringTensor(f func(i ...int) string, signature string, dim []int) Tensor {
+	return Tensor{
+		func(i ...int) interface{} { return f(i...) },
+		signature,
+		dim,
+		defaultString{},
 	}
 }

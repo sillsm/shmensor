@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"index/suffixarray"
 	"log"
+	"reflect"
 	"sort"
 )
 
@@ -360,6 +361,33 @@ func Product(t1, t2 Tensor, profiler *Profiler) Tensor {
 		append(t1.dim, t2dim...),
 		t1.t,
 	}
+}
+
+// Plus adds two tensors together.
+// Must return error if signature, dims, or type not equal.
+func Plus(t1, t2 Tensor) (Tensor, error) {
+	if !reflect.DeepEqual(t1.dim, t2.dim) {
+		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible dimension. %v %v", t1, t2)
+	}
+	if !reflect.DeepEqual(t1.signature, t2.signature) {
+		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible signature. %v %v", t1, t2)
+	}
+	if !reflect.DeepEqual(t1.t, t2.t) {
+		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible type. %v %v", t1, t2)
+	}
+	f := func(inner ...int) interface{} {
+		i := make([]int, len(inner))
+		copy(i, inner)
+		// Assert they are the same type here
+		// TODO(xam)
+		return t1.t.Add(t1.f(i...), t2.f(i...))
+	}
+	return Tensor{
+		f,
+		t1.signature,
+		t1.dim,
+		t1.t,
+	}, nil
 }
 
 //
