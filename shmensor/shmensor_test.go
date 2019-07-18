@@ -192,7 +192,8 @@ func TestPlus(t *testing.T) {
 	for _, tt := range table {
 		p, err := Plus(*tt.a, *tt.b)
 		if err != nil && !tt.err {
-			t.Errorf("Got an error in the plus test when not expecting one.")
+			t.Errorf("In %v, got err%v.\n Got an error in the plus test when not expecting one.",
+				tt.description, err)
 		}
 		if err == nil && tt.err {
 			t.Errorf("On %v | Expected an error in the plus test but didn't get one.",
@@ -250,6 +251,29 @@ func TestTrace(t *testing.T) {
 			t.Errorf("Dimension mismatch: want %v, got %v", tt.dimension, r.Dimension())
 		}
 	}
+}
+
+// Test applying a function to every entry of a tensor.
+// Useful for stuff like sigmoid functions in neural nets.
+func TestApply(t *testing.T) {
+	a := newStringMatrix([][]string{
+		{"a", "b"},
+		{"c", "d"},
+	})
+	f := NewStringFunction(func(s string) string {
+		return "|" + s + "|"
+	})
+	r, err := Apply(f, *a)
+	err = err
+	reify := r.Reify()
+	compare := [][]interface{}{
+		{"|a|", "|b|"},
+		{"|c|", "|d|"},
+	}
+	if !reflect.DeepEqual(reify, compare) {
+		t.Errorf("want %v, got %v", reify, compare)
+	}
+
 }
 
 func E(e ...Expression) []Expression {

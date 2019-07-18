@@ -64,6 +64,14 @@ type Expression struct {
 	signature string
 }
 
+// Function is a function that can be applied to every element of a Tensor.
+// As of now, a caller can't make their own. They have to use a
+// constructor from the types file which ensures types are aligned.
+type Function struct {
+	f func(interface{}) interface{}
+	t Type
+}
+
 // Profiler collects metrics about Tensor evaluation for
 // debugging and be
 type Profiler struct {
@@ -373,7 +381,8 @@ func Plus(t1, t2 Tensor) (Tensor, error) {
 		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible signature. %v %v", t1, t2)
 	}
 	if !reflect.DeepEqual(t1.t, t2.t) {
-		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible type. %v %v", t1, t2)
+		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible type. %v %v",
+			reflect.TypeOf(t1.t), reflect.TypeOf(t2.t))
 	}
 	f := func(inner ...int) interface{} {
 		i := make([]int, len(inner))
@@ -387,6 +396,28 @@ func Plus(t1, t2 Tensor) (Tensor, error) {
 		t1.signature,
 		t1.dim,
 		t1.t,
+	}, nil
+}
+
+func Apply(function Function, t Tensor) (Tensor, error) {
+	if !reflect.DeepEqual(t.t, function.t) {
+		return Tensor{}, fmt.Errorf("Tried to apply a function to a tensor"+
+			" of incompatible type. %v %v",
+			reflect.TypeOf(function.t), reflect.TypeOf(t.t))
+	}
+
+	f := func(inner ...int) interface{} {
+		i := make([]int, len(inner))
+		copy(i, inner)
+		// Assert they are the same type here
+		// TODO(xam)
+		return function.f(t.f(i...))
+	}
+	return Tensor{
+		f,
+		t.signature,
+		t.dim,
+		t.t,
 	}, nil
 }
 

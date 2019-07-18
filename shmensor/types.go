@@ -98,3 +98,15 @@ func NewStringTensor(f func(i ...int) string, signature string, dim []int) Tenso
 		defaultString{},
 	}
 }
+
+func NewStringFunction(f func(s string) string) Function {
+	wrapper := func(i interface{}) interface{} {
+		// Test type assertion and panic informatively first.
+		return f(i.(string))
+	}
+	return Function{
+		wrapper,
+		defaultString{},
+	}
+
+}
