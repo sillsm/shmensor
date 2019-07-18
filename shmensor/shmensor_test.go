@@ -84,6 +84,20 @@ func newStringMatrix(v [][]string) *Tensor {
 	return &t
 }
 
+// New real matrix helper function.
+func newRealMatrix(v [][]float64) *Tensor {
+	vals := make([][]float64, len(v))
+	copy(vals, v)
+	t := NewRealTensor(
+		func(i ...int) float64 {
+			return vals[i[0]][i[1]]
+		},
+		"ud",
+		[]int{len(v), len(v[0])},
+	)
+	return &t
+}
+
 var det1 = NewIntTensor(
 	func(i ...int) int {
 		if i[0] == i[1] {
@@ -256,24 +270,62 @@ func TestTrace(t *testing.T) {
 // Test applying a function to every entry of a tensor.
 // Useful for stuff like sigmoid functions in neural nets.
 func TestApply(t *testing.T) {
-	a := newStringMatrix([][]string{
-		{"a", "b"},
-		{"c", "d"},
-	})
-	f := NewStringFunction(func(s string) string {
-		return "|" + s + "|"
-	})
-	r, err := Apply(f, *a)
-	err = err
-	reify := r.Reify()
-	compare := [][]interface{}{
-		{"|a|", "|b|"},
-		{"|c|", "|d|"},
-	}
-	if !reflect.DeepEqual(reify, compare) {
-		t.Errorf("want %v, got %v", reify, compare)
+	table := []struct {
+		description string
+		f           Function
+		t           *Tensor
+		reified     [][]interface{}
+		err         bool
+	}{
+		{"Add bars to entries.",
+			NewStringFunction(func(s string) string {
+				return "|" + s + "|"
+			}),
+			newStringMatrix([][]string{
+				{"a", "b"},
+				{"c", "d"},
+			}),
+			[][]interface{}{
+				{"|a|", "|b|"},
+				{"|c|", "|d|"},
+			},
+			false,
+		},
+		{"Square every entry of a real tensor",
+			NewRealFunction(func(r float64) float64 {
+				return r * r
+			}),
+			newRealMatrix([][]float64{
+				{2., -1., 0.},
+				{6., 8., 2.},
+			}),
+			[][]interface{}{
+				{4., 1., 0.},
+				{36., 64., 4.},
+			},
+			false,
+		},
 	}
 
+	for _, tt := range table {
+		r, err := Apply(tt.f, *tt.t)
+		if err != nil && !tt.err {
+			t.Errorf("In %v, got err%v.\n Got an error in the TestApply when not expecting one.",
+				tt.description, err)
+		}
+		if err == nil && tt.err {
+			t.Errorf("On %v | Expected an error in TestApply but didn't get one.",
+				tt.description)
+		}
+		// If it was expecting an error and caught one, keep going.
+		if tt.err {
+			continue
+		}
+		real := r.Reify()
+		if !reflect.DeepEqual(real, tt.reified) {
+			t.Errorf("On %v: got %v, want %v", tt.description, real, tt.reified)
+		}
+	}
 }
 
 func E(e ...Expression) []Expression {

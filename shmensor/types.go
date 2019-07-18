@@ -59,6 +59,17 @@ func NewRealTensor(f func(i ...int) float64, signature string, dim []int) Tensor
 	}
 }
 
+func NewRealFunction(f func(r float64) float64) Function {
+	wrapper := func(i interface{}) interface{} {
+		// Test type assertion and panic informatively first.
+		return f(i.(float64))
+	}
+	return Function{
+		wrapper,
+		defaultReal{},
+	}
+}
+
 // Complex numbers.
 type defaultComplex struct{}
 
@@ -108,5 +119,4 @@ func NewStringFunction(f func(s string) string) Function {
 		wrapper,
 		defaultString{},
 	}
-
 }
