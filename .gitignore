@@ -1,8 +1,0 @@
-# Ignore applications
-applications/*
-applications/*/*
-applications/*/*/*
-
-# Don't ignore .md or .go files
-!*.md
-!*.go
