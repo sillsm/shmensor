@@ -75,7 +75,14 @@ type Term struct {
 
 // Plus contains the sum of two Terms.
 type PlusStruct struct {
-	a, b Evaluator
+	A, B Evaluator
+}
+
+// ApplyStruct contains a function and an
+// Evaluator interface to apply it to.
+type ApplyStruct struct {
+	Func Function
+	E    Evaluator
 }
 
 // Function is a function that can be applied to every element of a Tensor.
@@ -271,6 +278,52 @@ func (term Term) Eval() (Tensor, error, *Profiler) {
 
 	}
 	return *rhs.t, nil, profiler
+}
+
+// More pedestrian eval functions
+func (e Expression) Eval() (Tensor, error, *Profiler) {
+	return *e.t, nil, nil
+}
+
+func (t Tensor) Eval() (Tensor, error, *Profiler) {
+	return t, nil, nil
+}
+
+func (as ApplyStruct) Eval() (Tensor, error, *Profiler) {
+	t, e1, p := as.E.Eval()
+	t2, e2 := Apply(as.Func, t)
+	if e1 != nil || e2 != nil {
+		e2 = fmt.Errorf("One of 2 possible errors stemming from function application"+
+			"1)Evaling argument or 2)function application 1)%v, 2)%v, 3)%v", e1, e2)
+	}
+	return t2, e2, p
+
+}
+
+func (ps PlusStruct) Eval() (Tensor, error, *Profiler) {
+	t1, e1, p1 := ps.A.Eval()
+	t2, e2, p2 := ps.B.Eval()
+	p3 := &Profiler{}
+	if p1 != nil && p2 == nil {
+		p3 = p1
+	}
+	if p1 == nil && p2 != nil {
+		p3 = p2
+	}
+	if p1 != nil && p2 != nil {
+		p3 = &Profiler{
+			p1.Multiplies + p2.Multiplies,
+			p1.Adds + p2.Adds,
+			false,
+			p1.TraceCache + p2.TraceCache,
+		}
+	}
+	t3, e3 := Plus(t1, t2)
+	if e1 != nil || e2 != nil || e3 != nil {
+		e3 = fmt.Errorf("One of 3 possible errors stemming from evaluating"+
+			"1)first term, 2)second term, or their 3)sum.\n 1)%v, 2)%v, 3)%v", e1, e2, e3)
+	}
+	return t3, e3, p3
 }
 
 // Transpose swaps two tensor indices.

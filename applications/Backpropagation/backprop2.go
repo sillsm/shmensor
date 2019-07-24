@@ -113,25 +113,23 @@ func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	[]float64{0, 0, 0, 1},
 	[]float64{0, 0, 0, 0},
 	)*/
-	expression := shmeh.E(
-		weights.D("a").U("b").D("c"),
-		activation.U("c").D("d"),
-		dirac3(3, 3, 2).U("d").D("e").U("a"), // Used to tie the indices of the
-	)
-
-	a, err, _ := expression.Eval()
-	if err != nil {
-		panic(err)
-	}
-	p, err := shmeh.Plus(biases, a)
-	if err != nil {
-		panic(err)
-	}
-
 	sigmoid := shmeh.NewRealFunction(func(r float64) float64 {
 		return math.Exp(r) / (1. + math.Exp(r))
 	})
-	s, err := shmeh.Apply(sigmoid, p)
+
+	expression := shmeh.ApplyStruct{
+		sigmoid,
+		shmeh.PlusStruct{
+			biases,
+			shmeh.E(
+				weights.D("a").U("b").D("c"),
+				activation.U("c").D("d"),
+				dirac3(3, 3, 2).U("d").D("e").U("a"), // Used to tie the indices of the
+			),
+		},
+	}
+
+	s, err, _ := expression.Eval()
 	if err != nil {
 		panic(err)
 	}
