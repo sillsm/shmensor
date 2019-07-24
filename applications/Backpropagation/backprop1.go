@@ -105,13 +105,9 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 	}
 }
 
-func E(e ...shmeh.Expression) []shmeh.Expression {
-	return e
-}
-
 func main() {
 	table := []struct {
-		t []shmeh.Expression
+		t shmeh.Term
 		// Reshape it to make it visually compelling.
 		// In reality, all these tensors should be all "uuuu", or the
 		// contraction with the "ud" partial derivative doesn't make sense.
@@ -119,7 +115,7 @@ func main() {
 		aTrans, bTrans int
 		desc           string
 	}{
-		{E(weights.U("j").D("k").D("i")),
+		{shmeh.E(weights.U("j").D("k").D("i")),
 			"dud",
 			0, 0,
 			"\nLet's examine the initial weights for our three layer system." +
@@ -127,7 +123,7 @@ func main() {
 				"hidden layer 2\t\toutput layer"},
 	}
 	for _, elt := range table {
-		tensor, err, profiler := shmeh.Eval(elt.t...)
+		tensor, err, profiler := elt.t.Eval()
 		// Transpose?
 		if elt.aTrans != 0 || elt.bTrans != 0 {
 			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)
@@ -168,7 +164,7 @@ func main() {
 		"activation matrix, and then shifts everything to the right.\n")
 	fmt.Printf("%v", activation)
 
-	expression := E(
+	expression := shmeh.E(
 		weights.D("a").U("b").D("c"),
 		activation.U("c").D("d"),
 		dirac_delta4.U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
@@ -178,7 +174,7 @@ func main() {
 	// Run an input signal through the network.
 	for i := 0; i < 3; i++ {
 		fmt.Printf("%v application", i)
-		activation, _, _ = shmeh.Eval(expression...)
+		activation, _, _ = expression.Eval()
 		fmt.Printf("%v", activation)
 	}
 
@@ -213,7 +209,7 @@ func main() {
 
 	pad.Reshape("du")
 
-	backProp1 := E(
+	backProp1 := shmeh.E(
 		pad.D("a").U("z"),
 		tWeights.D("z").U("b").D("c"),
 		errorInOutput.U("c").D("d"),
@@ -223,7 +219,7 @@ func main() {
 	fmt.Printf("\nError %v\n", errorInOutput)
 	for i := 0; i < 3; i++ {
 		fmt.Printf("%v application", i)
-		errorInOutput, _, _ = shmeh.Eval(backProp1...)
+		errorInOutput, _, _ = backProp1.Eval()
 		fmt.Printf("%v", errorInOutput)
 	}
 	fmt.Printf("\nFinally, we take the back-propagated errors and the\n" +
@@ -242,7 +238,7 @@ func main() {
 	activations = activations
 	errors = errors
 
-	delErrorWrtWeights := E(
+	delErrorWrtWeights := shmeh.E(
 		dirac3(3, 4, 4).U("x").D("b").D("c"),
 		activations.U("a").D("b"),
 		errors.U("d").D("c"),
@@ -252,7 +248,7 @@ func main() {
 	fmt.Printf("Activations %v", activations)
 	fmt.Printf("Errors %v", errors)
 
-	d, _, _ := shmeh.Eval(delErrorWrtWeights...)
+	d, _, _ := delErrorWrtWeights.Eval()
 	d.Reshape("dud")
 	VisualizePolynomial(d, nil, nil)
 }

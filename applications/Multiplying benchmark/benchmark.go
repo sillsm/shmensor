@@ -14,8 +14,7 @@ package main
 
 import (
 	"fmt"
-        shmeh "github.com/sillsm/shmensor/shmensor"
-
+	shmeh "github.com/sillsm/shmensor/shmensor"
 )
 
 // Prettified
@@ -104,13 +103,10 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 	}
 }
 
-func E(e ...shmeh.Expression) []shmeh.Expression {
-	return e
-}
-
 func main() {
+	E := shmeh.E
 	table := []struct {
-		t []shmeh.Expression
+		t shmeh.Term
 		// Reshape it to make it visually compelling.
 		// In reality, all these tensors should be all "uuuu", or the
 		// contraction with the "ud" partial derivative doesn't make sense.
@@ -131,7 +127,7 @@ func main() {
 			"Multiplying the same 2 x 2 matrix 21 times."},
 	}
 	for _, elt := range table {
-		tensor, err, profiler := shmeh.Eval(elt.t...)
+		tensor, err, profiler := elt.t.Eval()
 		// Transpose?
 		if elt.aTrans != 0 || elt.bTrans != 0 {
 			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)

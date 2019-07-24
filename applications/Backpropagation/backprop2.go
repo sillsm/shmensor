@@ -106,10 +106,6 @@ func VisualizePolynomial(t shmeh.Tensor, contraLabels, coLabels [][]string) {
 	}
 }
 
-func E(e ...shmeh.Expression) []shmeh.Expression {
-	return e
-}
-
 func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	/*rightShift := newMatrix(
 	[]float64{0, 1, 0, 0},
@@ -117,13 +113,13 @@ func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	[]float64{0, 0, 0, 1},
 	[]float64{0, 0, 0, 0},
 	)*/
-	expression := E(
+	expression := shmeh.E(
 		weights.D("a").U("b").D("c"),
 		activation.U("c").D("d"),
 		dirac3(3, 3, 2).U("d").D("e").U("a"), // Used to tie the indices of the
 	)
 
-	a, err, _ := shmeh.Eval(expression...)
+	a, err, _ := expression.Eval()
 	if err != nil {
 		panic(err)
 	}
@@ -198,7 +194,7 @@ func main() {
 
 	pad.Reshape("du")
 
-	backProp1 := E(
+	backProp1 := shmeh.E(
 		pad.D("a").U("z"),
 		tWeights.D("z").U("b").D("c"),
 		errorInOutput.U("c").D("d"),
@@ -208,7 +204,7 @@ func main() {
 	fmt.Printf("\nError %v\n", errorInOutput)
 	for i := 0; i < 3; i++ {
 		fmt.Printf("%v application", i)
-		errorInOutput, _, _ = shmeh.Eval(backProp1...)
+		errorInOutput, _, _ = backProp1.Eval()
 		fmt.Printf("%v", errorInOutput)
 	}
 	fmt.Printf("\nFinally, we take the back-propagated errors and the\n" +
@@ -227,7 +223,7 @@ func main() {
 	activations = activations
 	errors = errors
 
-	delErrorWrtWeights := E(
+	delErrorWrtWeights := shmeh.E(
 		dirac3(3, 4, 4).U("x").D("b").D("c"),
 		activations.U("a").D("b"),
 		errors.U("d").D("c"),
@@ -237,7 +233,7 @@ func main() {
 	fmt.Printf("Activations %v", activations)
 	fmt.Printf("Errors %v", errors)
 
-	d, _, _ := shmeh.Eval(delErrorWrtWeights...)
+	d, _, _ := delErrorWrtWeights.Eval()
 	d.Reshape("dud")
 	VisualizePolynomial(d, nil, nil)
 }

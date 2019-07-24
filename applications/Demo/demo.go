@@ -14,18 +14,14 @@ package main
 
 import (
 	"fmt"
-	"reflect"
 	shmeh "github.com/sillsm/shmensor/shmensor"
-
+	"reflect"
 )
 
-func E(e ...shmeh.Expression) []shmeh.Expression {
-	return e
-}
-
 func main() {
+	E := shmeh.E
 	table := []struct {
-		t    []shmeh.Expression
+		t    shmeh.Term
 		desc string
 	}{
 		{E(col1.U("i")), "Column Vector (1, 0)."},
@@ -58,7 +54,7 @@ func main() {
 	}
 
 	for _, elt := range table {
-		tensor, err, _ := shmeh.Eval(elt.t...)
+		tensor, err, _ := elt.t.Eval()
 		if err != nil {
 			panic(err)
 		}

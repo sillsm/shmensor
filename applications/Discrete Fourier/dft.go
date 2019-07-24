@@ -14,10 +14,9 @@ package main
 
 import (
 	"fmt"
+	shmeh "github.com/sillsm/shmensor/shmensor"
 	"math"
 	"math/cmplx"
-	shmeh "github.com/sillsm/shmensor/shmensor"
-
 )
 
 // Prettified
@@ -111,8 +110,9 @@ func E(e ...shmeh.Expression) []shmeh.Expression {
 }
 
 func main() {
+	E := shmeh.E
 	table := []struct {
-		t []shmeh.Expression
+		t shmeh.Term
 		// Reshape it to make it visually compelling.
 		// In reality, all these tensors should be all "uuuu", or the
 		// contraction with the "ud" partial derivative doesn't make sense.
@@ -156,7 +156,7 @@ func main() {
 			"Finally, we compute the product of the DFT of both polynomials, then invert."},
 	}
 	for _, elt := range table {
-		tensor, err, profiler := shmeh.Eval(elt.t...)
+		tensor, err, profiler := elt.t.Eval()
 		// Transpose?
 		if elt.aTrans != 0 || elt.bTrans != 0 {
 			tensor, err = shmeh.Transpose(tensor, elt.aTrans, elt.bTrans)
