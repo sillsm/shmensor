@@ -328,10 +328,6 @@ func TestApply(t *testing.T) {
 	}
 }
 
-func E(e ...Expression) []Expression {
-	return e
-}
-
 // Reify has three properites:
 //
 func TestReify(t *testing.T) {
@@ -450,7 +446,7 @@ func TestReify(t *testing.T) {
 func TestEval(t *testing.T) {
 	table := []struct {
 		description      string
-		tensorExpression []Expression
+		tensorExpression Term
 		reified          [][]interface{}
 		signature        string
 		dimension        []int
@@ -495,7 +491,7 @@ func TestEval(t *testing.T) {
 		*/
 	}
 	for _, tt := range table {
-		tensor, err, _ := Eval(tt.tensorExpression...)
+		tensor, err, _ := tt.tensorExpression.Eval()
 		// We're expecting an error.
 		if tt.producesError && err == nil {
 			t.Errorf("On %v\n Trace attempt should have errored but did not.", tt.description)

@@ -53,6 +53,9 @@ type Tensor struct {
 	// rational number.
 	t Type
 }
+type Evaluator interface {
+	Eval() (Tensor, error, *Profiler)
+}
 
 // An Expression is not a Tensor. It's an Expression symbolizing a
 // desired combination of tensor products and contractions on Tensors.
@@ -62,6 +65,17 @@ type Expression struct {
 	t         *Tensor
 	indices   string
 	signature string
+}
+
+// A Term is a list of Expressions. It represents a single term
+// of tensor products and contractions in abstract index notation.
+type Term struct {
+	List []Expression
+}
+
+// Plus contains the sum of two Terms.
+type PlusStruct struct {
+	a, b Evaluator
 }
 
 // Function is a function that can be applied to every element of a Tensor.
@@ -168,6 +182,11 @@ func (e Expression) D(indices string) Expression {
 	return e
 }
 
+// E wraps up a bunch of expressions into a term.
+func E(i ...Expression) Term {
+	return Term{i}
+}
+
 // Eval takes a list of expressions
 // representing a solo or product term
 // of tensors in abstract index notation
@@ -177,9 +196,10 @@ func (e Expression) D(indices string) Expression {
 // is only performed when you call Reify().
 //
 // Consider verbose mode boolean to explore what's happening.
-func Eval(t ...Expression) (Tensor, error, *Profiler) {
+func (term Term) Eval() (Tensor, error, *Profiler) {
 	// Profiler
 	profiler := &Profiler{}
+	t := term.List
 
 	// Eval first tensors products
 	if len(t) == 0 {
