@@ -14,7 +14,6 @@ package shmensor
 
 import (
 	"fmt"
-	"math"
 	"reflect"
 	"testing"
 )
@@ -335,16 +334,16 @@ func TestApply(t *testing.T) {
 //
 func TestReify(t *testing.T) {
 	// Given signature and dimensions, create a dummy tensor
+	// where each value is the string form of its index.
 	testTensor := func(signature string, dimensions []int) Tensor {
-		f := func(i ...int) int {
-			// Prepend the digits with 9
-			value := 9 * int(math.Pow10(len(i)))
-			for place, j := range i {
-				value += j * int(math.Pow10(len(i)-place-1))
+		f := func(i ...int) string {
+			value := ""
+			for _, j := range i {
+				value += fmt.Sprintf("%v", j)
 			}
 			return value
 		}
-		t := NewIntTensor(
+		t := NewStringTensor(
 			f,
 			signature,
 			dimensions)
@@ -389,30 +388,30 @@ func TestReify(t *testing.T) {
 			"Test Tensor 1",
 			testTensor("dud", []int{4, 2, 2}),
 			[][]interface{}{
-				{9000, 9001, 9100, 9101, 9200, 9201, 9300, 9301},
-				{9010, 9011, 9110, 9111, 9210, 9211, 9310, 9311},
+				{"000", "001", "100", "101", "200", "201", "300", "301"},
+				{"010", "011", "110", "111", "210", "211", "310", "311"},
 			},
 		},
 		{
 			"Test Tensor 2",
 			testTensor("ddu", []int{4, 2, 2}),
 			[][]interface{}{
-				{9000, 9010, 9100, 9110, 9200, 9210, 9300, 9310},
-				{9001, 9011, 9101, 9111, 9201, 9211, 9301, 9311},
+				{"000", "010", "100", "110", "200", "210", "300", "310"},
+				{"001", "011", "101", "111", "201", "211", "301", "311"},
 			},
 		},
 		{
 			"Test Tensor 3",
 			testTensor("uuudd", []int{2, 2, 2, 3, 2}),
 			[][]interface{}{
-				{900000, 900001, 900010, 900011, 900020, 900021},
-				{900100, 900101, 900110, 900111, 900120, 900121},
-				{901000, 901001, 901010, 901011, 901020, 901021},
-				{901100, 901101, 901110, 901111, 901120, 901121},
-				{910000, 910001, 910010, 910011, 910020, 910021},
-				{910100, 910101, 910110, 910111, 910120, 910121},
-				{911000, 911001, 911010, 911011, 911020, 911021},
-				{911100, 911101, 911110, 911111, 911120, 911121},
+				{"00000", "00001", "00010", "00011", "00020", "00021"},
+				{"00100", "00101", "00110", "00111", "00120", "00121"},
+				{"01000", "01001", "01010", "01011", "01020", "01021"},
+				{"01100", "01101", "01110", "01111", "01120", "01121"},
+				{"10000", "10001", "10010", "10011", "10020", "10021"},
+				{"10100", "10101", "10110", "10111", "10120", "10121"},
+				{"11000", "11001", "11010", "11011", "11020", "11021"},
+				{"11100", "11101", "11110", "11111", "11120", "11121"},
 			},
 		},
 	}
@@ -485,13 +484,6 @@ func TestEval(t *testing.T) {
 			"u",
 			[]int{5},
 			false},
-
-		/*
-			E(dirac_delta3.U("a").D("b").D("c"),
-						newVec(1, 2, 3, 4, 5).U("b"),
-						newVec(1, 2, 3, 4, 5).U("c")),
-						"Hadamard Product (component wise multiplication) on <1,2,3,4,5>."},
-		*/
 	}
 	for _, tt := range table {
 		tensor, err, _ := tt.tensorExpression.Eval()
