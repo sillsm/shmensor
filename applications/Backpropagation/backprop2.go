@@ -117,9 +117,9 @@ func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 		return math.Exp(r) / (1. + math.Exp(r))
 	})
 
-	expression := shmeh.ApplyStruct{
+	expression := shmeh.Apply{
 		sigmoid,
-		shmeh.PlusStruct{
+		shmeh.Plus{
 			biases,
 			shmeh.E(
 				weights.D("a").U("b").D("c"),

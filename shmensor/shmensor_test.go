@@ -155,21 +155,21 @@ func newIntDirac3(size int) *Tensor {
 func TestPlus(t *testing.T) {
 	table := []struct {
 		description string
-		a           *Tensor
-		b           *Tensor
+		plus        Plus
 		reified     [][]interface{}
 		err         bool
 	}{
 		{
 			"Adding two 2x2 string matrices.",
-			newStringMatrix([][]string{
-				{"a", "b"},
-				{"c", "d"},
-			}),
-			newStringMatrix([][]string{
-				{"w", "x"},
-				{"y", "z"},
-			}),
+			Plus{
+				newStringMatrix([][]string{
+					{"a", "b"},
+					{"c", "d"},
+				}),
+				newStringMatrix([][]string{
+					{"w", "x"},
+					{"y", "z"},
+				})},
 			[][]interface{}{
 				{"a + w", "b + x"},
 				{"c + y", "d + z"},
@@ -178,33 +178,35 @@ func TestPlus(t *testing.T) {
 		},
 		{
 			"Adding matrices of incompatible dimension.",
-			newStringMatrix([][]string{
-				{"a", "b", "c"},
-				{"d", "e", "f"},
-			}),
-			newStringMatrix([][]string{
-				{"w", "x"},
-				{"y", "z"},
-			}),
+			Plus{
+				newStringMatrix([][]string{
+					{"a", "b", "c"},
+					{"d", "e", "f"},
+				}),
+				newStringMatrix([][]string{
+					{"w", "x"},
+					{"y", "z"},
+				})},
 			[][]interface{}{},
 			true,
 		},
 		{
 			"Adding matrices of incompatible type.",
-			newStringMatrix([][]string{
-				{"a", "b"},
-				{"d", "e"},
-			}),
-			newMatrix([][]int{
-				{1, 2},
-				{3, 4},
-			}),
+			Plus{
+				newStringMatrix([][]string{
+					{"a", "b"},
+					{"d", "e"},
+				}),
+				newMatrix([][]int{
+					{1, 2},
+					{3, 4},
+				})},
 			[][]interface{}{},
 			true,
 		},
 	}
 	for _, tt := range table {
-		p, err := Plus(*tt.a, *tt.b)
+		p, err, _ := tt.plus.Eval()
 		if err != nil && !tt.err {
 			t.Errorf("In %v, got err%v.\n Got an error in the plus test when not expecting one.",
 				tt.description, err)
@@ -272,19 +274,19 @@ func TestTrace(t *testing.T) {
 func TestApply(t *testing.T) {
 	table := []struct {
 		description string
-		f           Function
-		t           *Tensor
+		apply       Apply
 		reified     [][]interface{}
 		err         bool
 	}{
 		{"Add bars to entries.",
-			NewStringFunction(func(s string) string {
-				return "|" + s + "|"
-			}),
-			newStringMatrix([][]string{
-				{"a", "b"},
-				{"c", "d"},
-			}),
+			Apply{
+				NewStringFunction(func(s string) string {
+					return "|" + s + "|"
+				}),
+				newStringMatrix([][]string{
+					{"a", "b"},
+					{"c", "d"},
+				})},
 			[][]interface{}{
 				{"|a|", "|b|"},
 				{"|c|", "|d|"},
@@ -292,13 +294,14 @@ func TestApply(t *testing.T) {
 			false,
 		},
 		{"Square every entry of a real tensor",
-			NewRealFunction(func(r float64) float64 {
-				return r * r
-			}),
-			newRealMatrix([][]float64{
-				{2., -1., 0.},
-				{6., 8., 2.},
-			}),
+			Apply{
+				NewRealFunction(func(r float64) float64 {
+					return r * r
+				}),
+				newRealMatrix([][]float64{
+					{2., -1., 0.},
+					{6., 8., 2.},
+				})},
 			[][]interface{}{
 				{4., 1., 0.},
 				{36., 64., 4.},
@@ -308,7 +311,7 @@ func TestApply(t *testing.T) {
 	}
 
 	for _, tt := range table {
-		r, err := Apply(tt.f, *tt.t)
+		r, err, _ := tt.apply.Eval()
 		if err != nil && !tt.err {
 			t.Errorf("In %v, got err%v.\n Got an error in the TestApply when not expecting one.",
 				tt.description, err)

@@ -74,13 +74,13 @@ type Term struct {
 }
 
 // Plus contains the sum of two Terms.
-type PlusStruct struct {
+type Plus struct {
 	A, B Evaluator
 }
 
-// ApplyStruct contains a function and an
+// Apply contains a function and an
 // Evaluator interface to apply it to.
-type ApplyStruct struct {
+type Apply struct {
 	Func Function
 	E    Evaluator
 }
@@ -289,9 +289,31 @@ func (t Tensor) Eval() (Tensor, error, *Profiler) {
 	return t, nil, nil
 }
 
-func (as ApplyStruct) Eval() (Tensor, error, *Profiler) {
+func (as Apply) Eval() (Tensor, error, *Profiler) {
+	apply := func(function Function, t Tensor) (Tensor, error) {
+		if !reflect.DeepEqual(t.t, function.t) {
+			return Tensor{}, fmt.Errorf("Tried to apply a function to a tensor"+
+				" of incompatible type. %v %v",
+				reflect.TypeOf(function.t), reflect.TypeOf(t.t))
+		}
+
+		f := func(inner ...int) interface{} {
+			i := make([]int, len(inner))
+			copy(i, inner)
+			// Assert they are the same type here
+			// TODO(xam)
+			return function.f(t.f(i...))
+		}
+		return Tensor{
+			f,
+			t.signature,
+			t.dim,
+			t.t,
+		}, nil
+	}
+
 	t, e1, p := as.E.Eval()
-	t2, e2 := Apply(as.Func, t)
+	t2, e2 := apply(as.Func, t)
 	if e1 != nil || e2 != nil {
 		e2 = fmt.Errorf("One of 2 possible errors stemming from function application"+
 			"1)Evaling argument or 2)function application 1)%v, 2)%v, 3)%v", e1, e2)
@@ -300,7 +322,33 @@ func (as ApplyStruct) Eval() (Tensor, error, *Profiler) {
 
 }
 
-func (ps PlusStruct) Eval() (Tensor, error, *Profiler) {
+func (ps Plus) Eval() (Tensor, error, *Profiler) {
+	plus := func(t1, t2 Tensor) (Tensor, error) {
+		if !reflect.DeepEqual(t1.dim, t2.dim) {
+			return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible dimension. %v %v", t1, t2)
+		}
+		if !reflect.DeepEqual(t1.signature, t2.signature) {
+			return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible signature. %v %v", t1, t2)
+		}
+		if !reflect.DeepEqual(t1.t, t2.t) {
+			return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible type. %v %v",
+				reflect.TypeOf(t1.t), reflect.TypeOf(t2.t))
+		}
+		f := func(inner ...int) interface{} {
+			i := make([]int, len(inner))
+			copy(i, inner)
+			// Assert they are the same type here
+			// TODO(xam)
+			return t1.t.Add(t1.f(i...), t2.f(i...))
+		}
+		return Tensor{
+			f,
+			t1.signature,
+			t1.dim,
+			t1.t,
+		}, nil
+	}
+
 	t1, e1, p1 := ps.A.Eval()
 	t2, e2, p2 := ps.B.Eval()
 	p3 := &Profiler{}
@@ -318,7 +366,7 @@ func (ps PlusStruct) Eval() (Tensor, error, *Profiler) {
 			p1.TraceCache + p2.TraceCache,
 		}
 	}
-	t3, e3 := Plus(t1, t2)
+	t3, e3 := plus(t1, t2)
 	if e1 != nil || e2 != nil || e3 != nil {
 		e3 = fmt.Errorf("One of 3 possible errors stemming from evaluating"+
 			"1)first term, 2)second term, or their 3)sum.\n 1)%v, 2)%v, 3)%v", e1, e2, e3)
@@ -444,57 +492,6 @@ func Product(t1, t2 Tensor, profiler *Profiler) Tensor {
 	}
 }
 
-// Plus adds two tensors together.
-// Must return error if signature, dims, or type not equal.
-func Plus(t1, t2 Tensor) (Tensor, error) {
-	if !reflect.DeepEqual(t1.dim, t2.dim) {
-		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible dimension. %v %v", t1, t2)
-	}
-	if !reflect.DeepEqual(t1.signature, t2.signature) {
-		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible signature. %v %v", t1, t2)
-	}
-	if !reflect.DeepEqual(t1.t, t2.t) {
-		return Tensor{}, fmt.Errorf("Tried to add tensors of incompatible type. %v %v",
-			reflect.TypeOf(t1.t), reflect.TypeOf(t2.t))
-	}
-	f := func(inner ...int) interface{} {
-		i := make([]int, len(inner))
-		copy(i, inner)
-		// Assert they are the same type here
-		// TODO(xam)
-		return t1.t.Add(t1.f(i...), t2.f(i...))
-	}
-	return Tensor{
-		f,
-		t1.signature,
-		t1.dim,
-		t1.t,
-	}, nil
-}
-
-func Apply(function Function, t Tensor) (Tensor, error) {
-	if !reflect.DeepEqual(t.t, function.t) {
-		return Tensor{}, fmt.Errorf("Tried to apply a function to a tensor"+
-			" of incompatible type. %v %v",
-			reflect.TypeOf(function.t), reflect.TypeOf(t.t))
-	}
-
-	f := func(inner ...int) interface{} {
-		i := make([]int, len(inner))
-		copy(i, inner)
-		// Assert they are the same type here
-		// TODO(xam)
-		return function.f(t.f(i...))
-	}
-	return Tensor{
-		f,
-		t.signature,
-		t.dim,
-		t.t,
-	}, nil
-}
-
-//
 //func Eval(t1, t2 Tensor) Tensor {
 
 // given number and dimensions, return co or contravariant
