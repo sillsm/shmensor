@@ -293,7 +293,7 @@ func (as Apply) Eval() (Tensor, error, *Profiler) {
 	apply := func(function Function, t Tensor) (Tensor, error) {
 		if !reflect.DeepEqual(t.t, function.t) {
 			return Tensor{}, fmt.Errorf("Tried to apply a function to a tensor"+
-				" of incompatible type. %v %v",
+				" of incompatible types. %v %v",
 				reflect.TypeOf(function.t), reflect.TypeOf(t.t))
 		}
 

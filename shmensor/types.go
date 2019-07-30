@@ -70,6 +70,12 @@ func NewRealFunction(f func(r float64) float64) Function {
 	}
 }
 
+func NewRealScalar(f float64) Function {
+	return NewRealFunction(func(x float64) float64 {
+		return f * x
+	})
+}
+
 // Complex numbers.
 type defaultComplex struct{}
 
