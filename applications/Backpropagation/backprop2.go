@@ -21,29 +21,36 @@ import (
 	"math"
 )
 
-func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
+func weightedInput(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	rightShift := newMatrix(
 		[]float64{0, 1, 0},
 		[]float64{0, 0, 1},
 		[]float64{0, 0, 0},
 	)
+	expression := shmeh.Plus{
+		biases, // Add biases.
+		shmeh.E(
+			weights.D("a").U("b").D("c"),
+			activation.U("c").D("d"),
+			dirac3(3, 3, 2).U("d").D("e").U("a"), // Multiply weight matrix i by activation column i
+			rightShift.U("e").D("f"),             // Move signal forward one column.
+		)}
+
+	s, err, _ := expression.Eval()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	sigmoid := shmeh.NewRealFunction(func(r float64) float64 {
 		return math.Exp(r) / (1. + math.Exp(r))
 	})
 	expression :=
 		shmeh.Apply{
-			shmeh.NewRealScalar(1.),
-			shmeh.Apply{
-				sigmoid, // Sigmoid activation function.
-				shmeh.Plus{
-					biases, // Add biases.
-					shmeh.E(
-						weights.D("a").U("b").D("c"),
-						activation.U("c").D("d"),
-						dirac3(3, 3, 2).U("d").D("e").U("a"), // Multiply weight matrix i by activation column i
-						rightShift.U("e").D("f"),             // Move signal forward one column.
-					)},
-			},
+			sigmoid, // Sigmoid activation function.
+			weightedInput(weights, activation, biases),
 		}
 
 	s, err, _ := expression.Eval()
@@ -85,12 +92,6 @@ func backwardPass(weights, errors, delSigmaZ shmeh.Tensor) shmeh.Tensor {
 }
 
 func delSigmaZ(activation, biases shmeh.Tensor) shmeh.Tensor {
-	// Right shift.
-	rightShift := newMatrix(
-		[]float64{0, 1, 0},
-		[]float64{0, 0, 1},
-		[]float64{0, 0, 0},
-	)
 	delSigmoid := shmeh.NewRealFunction(func(r float64) float64 {
 		sigmoid := math.Exp(r) / (1. + math.Exp(r))
 		return sigmoid * (1 - sigmoid)
@@ -98,14 +99,7 @@ func delSigmaZ(activation, biases shmeh.Tensor) shmeh.Tensor {
 	expression :=
 		shmeh.Apply{
 			delSigmoid, // DelSigmoid function.
-			shmeh.Plus{
-				biases, // Add biases.
-				shmeh.E(
-					weights.D("a").U("b").D("c"),
-					activation.U("c").D("d"),
-					dirac3(3, 3, 2).U("d").D("e").U("a"), // Multiply weight matrix i by activation column i
-					rightShift.U("e").D("f"),             // Move signal forward one column.
-				)},
+			weightedInput(weights, activation, biases),
 		}
 
 	s, err, _ := expression.Eval()
@@ -310,6 +304,11 @@ func main() {
 	fmt.Printf("Final updated weights %v", weights)
 
 	return
+	/*
+		To compare: Final updated weights
+		[0.1497807161327628 0.1997511436323696 0.35891647971788465 0.46130127023873757]
+		[0.24956143226552566 0.29950228726473915 0.4586661860762334 0.5613701211079891]
+	*/
 
 }
 
@@ -330,16 +329,6 @@ var weights = shmeh.NewRealTensor(
 	[]int{2, 2, 2},
 )
 
-func identity(i ...int) int {
-	val := i[0]
-	for _, elt := range i {
-		if elt != val {
-			return 0
-		}
-	}
-	return 1
-}
-
 func identityFloat(i ...int) float64 {
 	val := i[0]
 	for _, elt := range i {
@@ -350,29 +339,11 @@ func identityFloat(i ...int) float64 {
 	return 1
 }
 
-var dirac_delta4 = shmeh.NewRealTensor(
-	identityFloat,
-	"udu",
-	[]int{4, 4, 3},
-)
-
 func dirac3(x, y, z int) *shmeh.Tensor {
 	t := shmeh.NewRealTensor(
 		identityFloat,
 		"udu",
 		[]int{x, y, z},
-	)
-	return &t
-}
-
-// Embed returns a matrix which will
-// embed an input a vector in a different vector space.
-// When larger, it zero-pads all new dimensions.
-func Embed(inputDim, outputDim int) *shmeh.Tensor {
-	t := shmeh.NewRealTensor(
-		identityFloat,
-		"ud",
-		[]int{outputDim, inputDim},
 	)
 	return &t
 }
