@@ -214,7 +214,7 @@ func main() {
 		tWeights.D("z").U("b").D("c"),
 		errorInOutput.U("c").D("d"),
 		dirac3(4, 4, 4).U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
-		leftShift.U("e").D("f"),              // Right-shift.
+		leftShift.U("e").D("f"),              // Left-shift.
 	)
 	fmt.Printf("\nError %v\n", errorInOutput)
 	for i := 0; i < 3; i++ {

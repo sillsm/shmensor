@@ -53,40 +53,39 @@ func forwardPass(weights, activation, biases shmeh.Tensor) shmeh.Tensor {
 	return s
 }
 
-func backwardPass(weights, errors, biases shmeh.Tensor) shmeh.Tensor {
-	rightShift := newMatrix(
-		[]float64{0, 1, 0},
-		[]float64{0, 0, 1},
-		[]float64{0, 0, 0},
+func backwardPass(weights, errors, delSigmaZ shmeh.Tensor) shmeh.Tensor {
+	leftShift := newMatrix(
+		[]float64{0, 0},
+		[]float64{1, 0},
 	)
-	sigmoid := shmeh.NewRealFunction(func(r float64) float64 {
-		return math.Exp(r) / (1. + math.Exp(r))
-	})
-	expression :=
-		shmeh.Apply{
-			shmeh.NewRealScalar(1.),
-			shmeh.Apply{
-				sigmoid, // Sigmoid activation function.
-				shmeh.Plus{
-					biases, // Add biases.
-					shmeh.E(
-						weights.D("a").U("b").D("c"),
-						errors.U("c").D("d"),
-						dirac3(3, 3, 2).U("d").D("e").U("a"), // Multiply weight matrix i by activation column i
-						rightShift.U("e").D("f"),             // Move signal forward one column.
-					)},
-			},
-		}
+	leftShift = leftShift
+	// transpose weights
+	tWeights, err := shmeh.Transpose(weights, 1, 2)
+	if err != nil {
+		panic(err)
+	}
+
+	expression := shmeh.E(
+		tWeights.D("a").U("b").D("c"),
+		errors.U("c").D("d"),
+		dirac3(2, 2, 2).U("d").D("e").U("a"), // Multiply weight matrix i by activation column i
+		leftShift.U("e").D("f"),              // Move signal backward one column.
+		// Finish with a Hadamard product of this U(b).D(f) with delSigma
+		delSigmaZ.U("w").D("x"),
+		dirac3(2, 2, 2).U("w").D("y").U("b"),
+		dirac3(2, 2, 2).U("x").D("z").U("f"),
+	)
 
 	s, err, _ := expression.Eval()
 	if err != nil {
 		panic(err)
 	}
+	s.Reshape("ud")
 	return s
 }
 
 func delSigmaZ(activation, biases shmeh.Tensor) shmeh.Tensor {
-	// Left shift.
+	// Right shift.
 	rightShift := newMatrix(
 		[]float64{0, 1, 0},
 		[]float64{0, 0, 1},
@@ -113,6 +112,24 @@ func delSigmaZ(activation, biases shmeh.Tensor) shmeh.Tensor {
 	if err != nil {
 		panic(err)
 	}
+
+	// Finish by cutting off the input column.
+	// No weighted activation there.
+	cutLeftColumn := newMatrix( //mix of cut and shift-left.
+		[]float64{0, 0},
+		[]float64{1, 0},
+		[]float64{0, 1},
+	)
+
+	cut := shmeh.E(
+		s.U("a").D("b"),
+		cutLeftColumn.U("b").D("c"),
+	)
+	s, err, _ = cut.Eval()
+	if err != nil {
+		panic(err)
+	}
+
 	return s
 }
 
@@ -140,12 +157,14 @@ func totalError(output, target shmeh.Tensor) float64 {
 	return totalErr
 }
 
-func outputLayerError(output, target shmeh.Tensor) []float64 {
+func outputLayerError(output, target, weightedActivations shmeh.Tensor) []float64 {
 	var ret []float64
+	activations := weightedActivations.Reify()
 	o := output.Reify()
 	t := target.Reify()
 	for i := range o {
-		ret = append(ret, o[i][0].(float64)-t[i][0].(float64))
+		a := activations[i][len(activations[i])-1].(float64)
+		ret = append(ret, (o[i][0].(float64)-t[i][0].(float64))*a)
 	}
 	return ret
 }
@@ -186,6 +205,54 @@ func setRightColumn(left []float64, t shmeh.Tensor) shmeh.Tensor {
 	return ten
 }
 
+func getUpdatedWeights(errors, activations shmeh.Tensor) shmeh.Tensor {
+
+	// Cut the input column from activations.
+	// No weighted activation there.
+	cutLeftColumn := newMatrix( //mix of cut and shift-left.
+		[]float64{1, 0},
+		[]float64{0, 1},
+		[]float64{0, 0},
+	)
+
+	cut := shmeh.E(
+		activations.U("a").D("b"),
+		cutLeftColumn.U("b").D("c"),
+	)
+	activations, err, _ := cut.Eval()
+	if err != nil {
+		panic(err)
+	}
+	expression := shmeh.E(
+		dirac3(2, 2, 2).U("x").D("b").D("c"),
+		activations.U("a").D("b"),
+		errors.U("d").D("c"),
+	)
+
+	s, err, _ := expression.Eval()
+	if err != nil {
+		panic(err)
+	}
+	s.Reshape("dud")
+	return s
+}
+
+func updateWeights(oldWeights, newWeights shmeh.Tensor, learningRate float64) shmeh.Tensor {
+	expression :=
+		shmeh.Plus{
+			oldWeights,
+			shmeh.Apply{
+				shmeh.NewRealScalar(-1. * learningRate),
+				newWeights,
+			},
+		}
+	s, err, _ := expression.Eval()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func main() {
 	// Now run a [1,1,0] two input vector into the system
 	activation := newMatrix(
@@ -221,98 +288,29 @@ func main() {
 	dSigmaWRTActivations := delSigmaZ(activation, biases)
 
 	fmt.Printf("Del Sigma %v", dSigmaWRTActivations)
+	// Notice we clip the input column; no error there.
 	errorLayer := newMatrix(
-		[]float64{0, 0, 0},
-		[]float64{0, 0, 0},
+		[]float64{0, 0},
+		[]float64{0, 0},
 	)
 
-	errorLayer = setRightColumn(outputLayerError(output, *targetOutput), errorLayer)
-	fmt.Printf("Err %v", errorLayer)
+	errorLayer = setRightColumn(outputLayerError(output, *targetOutput, dSigmaWRTActivations), errorLayer)
+	fmt.Printf("Err output layer%v", errorLayer)
+	errorLayer = backwardPass(weights, errorLayer, dSigmaWRTActivations)
+	errorLayer = setRightColumn(outputLayerError(output, *targetOutput, dSigmaWRTActivations), errorLayer)
+	fmt.Printf("Err 1 pass back %v", errorLayer)
+
+	newWeights := getUpdatedWeights(errorLayer, activation)
+	fmt.Printf("Del Weights %v", newWeights)
+
+	fmt.Printf("Initial Weights %v", weights)
+
+	learningRate := .5
+	weights = updateWeights(weights, newWeights, learningRate)
+	fmt.Printf("Final updated weights %v", weights)
 
 	return
 
-	fmt.Printf("Now we're going to use a simple tensor expression\n" +
-		"and repeat its evaluation to drive a signal\n" +
-		"from the input to the output of a neural net.\n\nThe expression takes the nth " +
-		"weight matrix above, \napplies it to the nth column in the\n" +
-		"activation matrix, and then shifts everything to the right.\n")
-	fmt.Printf("%v", activation)
-
-	// Do forward pass.
-
-	fmt.Printf("This is almost the correct expression.\n" +
-		"We also need to add biases to each node\n" +
-		"and then apply a sigmoid function.\n")
-
-	fmt.Printf("\nChanging gears, let's say we had an error quantity " +
-		"for the output layer.\nHow might we propogate it backwards?\n")
-
-	tWeights, _ := shmeh.Transpose(weights, 1, 2)
-	//VisualizePolynomial(tWeights, nil, nil)
-
-	leftShift := newMatrix(
-		[]float64{0, 0, 0, 0},
-		[]float64{1, 0, 0, 0},
-		[]float64{0, 1, 0, 0},
-		[]float64{0, 0, 1, 0},
-	)
-	errorInOutput := newMatrix(
-		[]float64{0, 0, 0, 15},
-		[]float64{0, 0, 0, 0},
-		[]float64{0, 0, 0, 0},
-	)
-
-	pad := newMatrix(
-		[]float64{0, 0, 0},
-		[]float64{1, 0, 0},
-		[]float64{0, 1, 0},
-		[]float64{0, 0, 1},
-	)
-
-	pad.Reshape("du")
-
-	backProp1 := shmeh.E(
-		pad.D("a").U("z"),
-		tWeights.D("z").U("b").D("c"),
-		errorInOutput.U("c").D("d"),
-		dirac3(4, 4, 4).U("d").D("e").U("a"), // Used to tie the indices of the weights and activations.
-		leftShift.U("e").D("f"),              // Right-shift.
-	)
-	fmt.Printf("\nError %v\n", errorInOutput)
-	for i := 0; i < 3; i++ {
-		fmt.Printf("%v application", i)
-		errorInOutput, _, _ = backProp1.Eval()
-		fmt.Printf("%v", errorInOutput)
-	}
-	fmt.Printf("\nFinally, we take the back-propagated errors and the\n" +
-		"forward propagated activations, and munge them together.\n")
-	activations := newMatrix(
-		[]float64{.1, .4, .7, .54},
-		[]float64{.2, .5, .8, 0},
-		[]float64{.0, .6, .9, 0},
-	)
-
-	errors := newMatrix(
-		[]float64{1, 3, 6, 15},
-		[]float64{2, 4, 7, 0},
-		[]float64{0, 5, 8, 0},
-	)
-	activations = activations
-	errors = errors
-
-	delErrorWrtWeights := shmeh.E(
-		dirac3(3, 4, 4).U("x").D("b").D("c"),
-		activations.U("a").D("b"),
-		errors.U("d").D("c"),
-	)
-	fmt.Printf("Current Weights\n")
-	//VisualizePolynomial(weights, nil, nil)
-	fmt.Printf("Activations %v", activations)
-	fmt.Printf("Errors %v", errors)
-
-	d, _, _ := delErrorWrtWeights.Eval()
-	d.Reshape("dud")
-	//VisualizePolynomial(d, nil, nil)
 }
 
 var weights = shmeh.NewRealTensor(
