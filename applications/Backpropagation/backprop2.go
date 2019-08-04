@@ -232,6 +232,15 @@ func getUpdatedWeights(errors, activations shmeh.Tensor) shmeh.Tensor {
 }
 
 func updateWeights(oldWeights, newWeights shmeh.Tensor, learningRate float64) shmeh.Tensor {
+	// transpose weights
+	// TODO(Xam: investigate this last transpose here.)
+	// Why was this necessary to get results to agree with mazur?
+	newWeights, err := shmeh.Transpose(newWeights, 1, 2)
+	if err != nil {
+		panic(err)
+	}
+	// Investigate further.
+
 	expression :=
 		shmeh.Plus{
 			oldWeights,
@@ -293,6 +302,7 @@ func main() {
 	errorLayer = backwardPass(weights, errorLayer, dSigmaWRTActivations)
 	errorLayer = setRightColumn(outputLayerError(output, *targetOutput, dSigmaWRTActivations), errorLayer)
 	fmt.Printf("Err 1 pass back %v", errorLayer)
+	fmt.Printf("Activations %v", activation)
 
 	newWeights := getUpdatedWeights(errorLayer, activation)
 	fmt.Printf("Del Weights %v", newWeights)
